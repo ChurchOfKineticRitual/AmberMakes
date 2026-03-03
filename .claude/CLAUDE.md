@@ -96,8 +96,14 @@ Prompt pattern for clean game sprites: "2D game sprite, [description], isolated 
 
 ---
 
-## Server
+## Preview & Server
 
+**In Claude Desktop (preferred):**
+- The embedded preview starts automatically via `.claude/launch.json`
+- After building or changing a game, navigate the preview to `http://localhost:8080/my-games/[game-name]/`
+- Auto-verify is on — take a screenshot after changes to confirm the game works
+
+**In Terminal (fallback):**
 - `python3 -m http.server 8080` from the AmberMakes root
 - Games are at `http://localhost:8080/my-games/[game-name]/`
 - Check if port is in use before starting: `lsof -i :8080`
