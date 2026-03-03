@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(python3 -m http.server *)",
+      "Bash(open http://*)",
+      "Bash(curl http://localhost:41595/*)",
+      "Bash(lsof *)",
+      "Bash(cp *)",
+      "Bash(mkdir *)",
+      "Bash(netlify *)",
+      "mcp__wavespeed__text_to_image"
+    ]
+  }
+}
