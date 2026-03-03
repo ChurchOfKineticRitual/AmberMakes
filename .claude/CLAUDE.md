@@ -45,6 +45,10 @@ SETTINGS goes at the very top of game.js. This is how Amber tweaks the game — 
 - Use `this.add.rectangle()` or physics-enabled rectangles.
 - Swap in real sprites later when she wants them.
 
+**Before building a new game, read these:**
+- `_reference/phaser-patterns.md` — tested code recipes for platforms, collectibles, enemies, camera, game over, timers, tweens, and more. Use these patterns, don't improvise Phaser API calls.
+- `my-games/example-platformer/game.js` — a complete working game showing all the patterns together. Use this as your structural reference.
+
 **Phaser rules:**
 - Phaser 3.90.0 — loaded via CDN in index.html, with local fallback at `../../_templates/game-template/lib/phaser.min.js`
 - Arcade physics ONLY (not Matter.js) — simpler, fewer things to break
