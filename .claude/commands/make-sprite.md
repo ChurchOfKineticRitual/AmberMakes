@@ -14,10 +14,13 @@ Generate a game sprite using AI and add it to the current game.
    - model: `google/nano-banana-2/text-to-image`
    - prompt: the enhanced prompt from step 3
    - size: `1024*1024`
-5. Save the generated image to `my-games/[current-game]/sprites/` with a descriptive kebab-case filename (e.g., `golden-coin.png`, `angry-robot.png`)
+   - The tool returns a URL, NOT a local file
+5. Download the generated image from the returned URL to `my-games/[current-game]/sprites/` with a descriptive kebab-case filename (e.g., `golden-coin.png`, `angry-robot.png`):
+   ```
+   curl -sL "[returned-url]" -o my-games/[current-game]/sprites/[filename].png
+   ```
 6. Try to import to Eagle (if running on localhost:41595):
-   - POST to `http://localhost:41595/api/item/addFromPath` with the full file path
-   - POST to `http://localhost:41595/api/item/update` to add tags `["ambermakes", "generated", game-name]` and annotation with the original prompt
+   - POST to `http://localhost:41595/api/item/addFromPath` with the full absolute file path and include `name`, `tags`, and `annotation` in the same request body
    - If Eagle isn't running or the request fails, skip this step silently — don't mention Eagle at all
 7. Git add and commit: "Add sprite: [description]"
 8. Tell Amber the sprite is ready and suggest how to use it in the game
