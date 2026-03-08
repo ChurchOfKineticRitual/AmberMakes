@@ -1,0 +1,94 @@
+{
+  "project": "Ferret Shop",
+  "style": "2D pixel art, top-down view, retro game style, clean edges, isolated on solid white background, no shadow",
+  "model": "google/nano-banana-2/text-to-image",
+  "output_dir": "/Users/jc/Wisdom/WORK/PROJECTS/Amber/AmberMakes/my-games/ferret-shop/sprites",
+  "eagle_api": "http://localhost:41595",
+  "eagle_folder": "Ferret Shop Sprites",
+  "sprites": [
+    {
+      "id": "ferret",
+      "filename": "ferret.png",
+      "prompt": "2D pixel art game sprite, top-down bird's eye view of a cute brown ferret, elongated slinky body with short legs, warm brown fur with cream belly, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Player character — replaces ferretColour rectangle",
+      "display_size": "30x18"
+    },
+    {
+      "id": "granny",
+      "filename": "granny.png",
+      "prompt": "2D pixel art game sprite, top-down bird's eye view of an elderly grandmother shopkeeper, pink cardigan, grey hair in a bun, round body, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Enemy — replaces grannyColour rectangle",
+      "display_size": "28x28"
+    },
+    {
+      "id": "mouse",
+      "filename": "mouse.png",
+      "prompt": "2D pixel art game sprite, top-down bird's eye view of a small grey mouse, round ears, thin pink tail, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Cage animal — replaces mouse rectangle",
+      "display_size": "12x12"
+    },
+    {
+      "id": "hamster",
+      "filename": "hamster.png",
+      "prompt": "2D pixel art game sprite, top-down bird's eye view of a chubby orange hamster, round fluffy body, tiny ears, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Cage animal — replaces hamster rectangle",
+      "display_size": "14x14"
+    },
+    {
+      "id": "rabbit",
+      "filename": "rabbit.png",
+      "prompt": "2D pixel art game sprite, top-down bird's eye view of a white rabbit, long floppy ears, fluffy round body, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Cage animal — replaces rabbit rectangle",
+      "display_size": "16x16"
+    },
+    {
+      "id": "parrot",
+      "filename": "parrot.png",
+      "prompt": "2D pixel art game sprite, top-down bird's eye view of a bright green parrot, colourful wing feathers with red and blue tips, wings folded, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Cage animal — replaces parrot rectangle",
+      "display_size": "14x14"
+    },
+    {
+      "id": "cat",
+      "filename": "cat.png",
+      "prompt": "2D pixel art game sprite, top-down bird's eye view of an orange tabby cat, round body with stripe markings, curled tail, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Cage animal — replaces cat rectangle",
+      "display_size": "18x18"
+    },
+    {
+      "id": "turtle",
+      "filename": "turtle.png",
+      "prompt": "2D pixel art game sprite, top-down bird's eye view of a green turtle, detailed hexagonal shell pattern, small legs poking out, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Cage animal — replaces turtle rectangle",
+      "display_size": "16x16"
+    },
+    {
+      "id": "poo",
+      "filename": "poo.png",
+      "prompt": "2D pixel art game sprite, cute cartoon poo pile, classic swirl shape, warm brown colour, cheerful style with tiny eyes, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Dropped poo — replaces pooColour circle",
+      "display_size": "20x20"
+    },
+    {
+      "id": "treat",
+      "filename": "treat.png",
+      "prompt": "2D pixel art game sprite, pet treat biscuit, bone-shaped orange dog biscuit with speckled texture, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Collectible — replaces treatColour rectangle",
+      "display_size": "12x12"
+    },
+    {
+      "id": "key",
+      "filename": "key.png",
+      "prompt": "2D pixel art game sprite, ornate golden key, classic medieval key shape with round bow and notched bit, shiny gold colour, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Pickup item — replaces keyColour rectangle",
+      "display_size": "14x8"
+    },
+    {
+      "id": "release-button",
+      "filename": "release-button.png",
+      "prompt": "2D pixel art game sprite, top-down view of a big red emergency button on a grey metal base, round mushroom-head button, viewed from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
+      "game_element": "Interactive button — replaces red circle",
+      "display_size": "40x40"
+    }
+  ]
+}
