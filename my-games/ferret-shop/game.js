@@ -133,7 +133,7 @@ let releasedAnimals;
 
 // ===== PRELOAD =====
 function preload() {
-    // No assets needed — coloured rectangles only
+    this.load.image('ferret', 'sprites/ferret.png');
 }
 
 // ===== CREATE =====
@@ -198,10 +198,10 @@ function create() {
     releasedAnimals = this.physics.add.group();
 
     // --- Ferret (starts inside its cage) ---
-    ferret = this.add.rectangle(
-        ferretCage.bounds.x, ferretCage.bounds.y,
-        SETTINGS.ferretLength, SETTINGS.ferretSize, SETTINGS.ferretColour
+    ferret = this.add.image(
+        ferretCage.bounds.x, ferretCage.bounds.y, 'ferret'
     );
+    ferret.setDisplaySize(SETTINGS.ferretSize * 1.5, SETTINGS.ferretLength * 1.5);
     this.physics.add.existing(ferret);
     ferret.body.setCollideWorldBounds(true);
     ferret.body.setSize(SETTINGS.ferretLength - 4, SETTINGS.ferretSize - 4);
@@ -288,7 +288,7 @@ function update(time, delta) {
     if (vx !== 0 && vy !== 0) { vx *= 0.707; vy *= 0.707; }
 
     ferret.body.setVelocity(vx * SETTINGS.ferretSpeed, vy * SETTINGS.ferretSpeed);
-    if (vx !== 0 || vy !== 0) ferret.rotation = Math.atan2(vy, vx);
+    if (vx !== 0 || vy !== 0) ferret.rotation = Math.atan2(vy, vx) + Math.PI / 2;
 
     // --- Door opening (hold space) ---
     updateDoorOpening(this, time, delta);
