@@ -133,20 +133,7 @@ let releasedAnimals;
 
 // ===== PRELOAD =====
 function preload() {
-    // Characters
-    this.load.image('ferret', 'sprites/ferret.png');
-    this.load.image('granny', 'sprites/granny.png');
-    this.load.image('mouse', 'sprites/mouse.png');
-    this.load.image('hamster', 'sprites/hamster.png');
-    this.load.image('rabbit', 'sprites/rabbit.png');
-    this.load.image('parrot', 'sprites/parrot.png');
-    this.load.image('cat', 'sprites/cat.png');
-    this.load.image('turtle', 'sprites/turtle.png');
-    // Objects
-    this.load.image('poo', 'sprites/poo.png');
-    this.load.image('treat', 'sprites/treat.png');
-    this.load.image('key', 'sprites/key.png');
-    this.load.image('release-button', 'sprites/release-button.png');
+    // No assets needed — coloured rectangles only
 }
 
 // ===== CREATE =====
@@ -184,8 +171,7 @@ function create() {
     // Desk is at (1000, shopTop+90, 200x60), so front edge is at y = shopTop+90+30+2
     const keyX = 1020;
     const keyY = SETTINGS.shopTop + 90 + 34;  // just below the desk's front edge
-    keyItem = this.add.image(keyX, keyY, 'key');
-    keyItem.setDisplaySize(SETTINGS.keySize, SETTINGS.keySize * 0.6);
+    keyItem = this.add.rectangle(keyX, keyY, SETTINGS.keySize, SETTINGS.keySize * 0.6, SETTINGS.keyColour);
     this.physics.add.existing(keyItem, true);
     keyItem.body.updateFromGameObject();
     keyItem.setDepth(3);
@@ -212,22 +198,20 @@ function create() {
     releasedAnimals = this.physics.add.group();
 
     // --- Ferret (starts inside its cage) ---
-    ferret = this.add.image(
+    ferret = this.add.rectangle(
         ferretCage.bounds.x, ferretCage.bounds.y,
-        'ferret'
+        SETTINGS.ferretLength, SETTINGS.ferretSize, SETTINGS.ferretColour
     );
-    ferret.setDisplaySize(SETTINGS.ferretLength, SETTINGS.ferretSize);
     this.physics.add.existing(ferret);
     ferret.body.setCollideWorldBounds(true);
     ferret.body.setSize(SETTINGS.ferretLength - 4, SETTINGS.ferretSize - 4);
     ferret.setDepth(5);
 
     // --- Granny ---
-    granny = this.add.image(
+    granny = this.add.rectangle(
         900, SETTINGS.shopTop + 140,
-        'granny'
+        SETTINGS.grannySize, SETTINGS.grannySize, SETTINGS.grannyColour
     );
-    granny.setDisplaySize(SETTINGS.grannySize, SETTINGS.grannySize);
     this.physics.add.existing(granny);
     granny.body.setCollideWorldBounds(true);
     grannyCurrentSpeed = SETTINGS.grannySpeed;
