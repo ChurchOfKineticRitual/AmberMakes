@@ -445,6 +445,15 @@ function startLevel1(sc) {
         fontSize: '16px', fill: '#888888', fontFamily: 'Arial',
     }).setOrigin(0.5, 0);
     levelObjects.push(player.distText);
+
+    // --- Restart button ---
+    const restartBtn = sc.add.text(760, 585, '↺', {
+        fontSize: '24px', fill: '#666666', fontFamily: 'Arial',
+    }).setOrigin(0.5).setInteractive();
+    restartBtn.on('pointerover', () => restartBtn.setColor('#ffffff'));
+    restartBtn.on('pointerout', () => restartBtn.setColor('#666666'));
+    restartBtn.on('pointerdown', () => showDesigner(sc));
+    levelObjects.push(restartBtn);
 }
 
 function updateLevel1(sc) {
