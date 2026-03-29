@@ -13,7 +13,7 @@ const SETTINGS = {
         { name: 'Cream', color: 0xf5deb3 },
         { name: 'Black', color: 0x3a3a3a },
     ],
-    patterns: ['solid', 'spotted', 'striped'],
+    patterns: ['solid', 'spotted', 'striped', 'white belly'],
 
     // Level 1 — pipe runner
     runSpeed: 3,
@@ -94,15 +94,22 @@ function drawHamster(sc, x, y, scale, parts) {
     const body = sc.add.ellipse(x, y, 40 * s, 30 * s, coat);
     parts.push(body);
 
-    // Pattern
+    // Pattern on body
     if (HAMSTER.pattern === 'spotted') {
-        const spot1 = sc.add.circle(x - 8 * s, y - 4 * s, 4 * s, lighterCoat);
-        const spot2 = sc.add.circle(x + 6 * s, y + 2 * s, 3 * s, lighterCoat);
-        const spot3 = sc.add.circle(x + 2 * s, y - 6 * s, 3.5 * s, lighterCoat);
-        parts.push(spot1, spot2, spot3);
+        // Small darker patches like a natural hamster coat
+        const spot1 = sc.add.circle(x - 10 * s, y - 2 * s, 5 * s, darkerCoat).setAlpha(0.5);
+        const spot2 = sc.add.circle(x + 4 * s, y + 4 * s, 4 * s, darkerCoat).setAlpha(0.5);
+        const spot3 = sc.add.circle(x - 3 * s, y + 6 * s, 3.5 * s, darkerCoat).setAlpha(0.5);
+        const spot4 = sc.add.circle(x + 8 * s, y - 5 * s, 3 * s, darkerCoat).setAlpha(0.5);
+        parts.push(spot1, spot2, spot3, spot4);
     } else if (HAMSTER.pattern === 'striped') {
-        const stripe = sc.add.rectangle(x, y - 2 * s, 30 * s, 5 * s, darkerCoat);
+        // Darker stripe running along the back (top of body)
+        const stripe = sc.add.ellipse(x, y - 8 * s, 32 * s, 6 * s, darkerCoat).setAlpha(0.6);
         parts.push(stripe);
+    } else if (HAMSTER.pattern === 'white belly') {
+        // White patch on the belly (bottom of body)
+        const belly = sc.add.ellipse(x, y + 5 * s, 24 * s, 12 * s, 0xffffff).setAlpha(0.8);
+        parts.push(belly);
     }
 
     // Head
@@ -261,14 +268,16 @@ function showDesigner(sc) {
     }).setOrigin(0.5);
     designerObjects.push(patLabel);
 
-    const patStartX = 400 - (SETTINGS.patterns.length * 100) / 2 + 50;
+    const patGap = 105;
+    const patStartX = 400 - (SETTINGS.patterns.length * patGap) / 2 + patGap / 2;
     SETTINGS.patterns.forEach((p, i) => {
-        const btn = sc.add.rectangle(patStartX + i * 100, 495, 80, 32, 0x222244);
+        const btn = sc.add.rectangle(patStartX + i * patGap, 495, 90, 32, 0x222244);
         btn.setStrokeStyle(2, HAMSTER.patternIndex === i ? 0xffffff : 0x444444);
         btn.setInteractive();
 
-        const txt = sc.add.text(patStartX + i * 100, 495, p.toUpperCase(), {
-            fontSize: '14px', fill: '#cccccc', fontFamily: 'Arial',
+        const label = p === 'white belly' ? 'W. BELLY' : p.toUpperCase();
+        const txt = sc.add.text(patStartX + i * patGap, 495, label, {
+            fontSize: '12px', fill: '#cccccc', fontFamily: 'Arial',
         }).setOrigin(0.5);
 
         btn.on('pointerdown', () => {
@@ -389,13 +398,18 @@ function startLevel1(sc) {
 
     // Pattern on player
     if (HAMSTER.pattern === 'spotted') {
-        const ps1 = sc.add.circle(112, 298, 3, Phaser.Display.Color.ValueToColor(HAMSTER.coat).lighten(20).color);
-        levelObjects.push(ps1);
-        player.faceParts.push(ps1);
+        const ps1 = sc.add.circle(112, 295, 3, Phaser.Display.Color.ValueToColor(HAMSTER.coat).darken(25).color).setAlpha(0.5);
+        const ps2 = sc.add.circle(122, 302, 2.5, Phaser.Display.Color.ValueToColor(HAMSTER.coat).darken(25).color).setAlpha(0.5);
+        levelObjects.push(ps1, ps2);
+        player.faceParts.push(ps1, ps2);
     } else if (HAMSTER.pattern === 'striped') {
-        const pst = sc.add.rectangle(120, 296, 20, 3, Phaser.Display.Color.ValueToColor(HAMSTER.coat).darken(25).color);
+        const pst = sc.add.ellipse(120, 290, 22, 4, Phaser.Display.Color.ValueToColor(HAMSTER.coat).darken(25).color).setAlpha(0.6);
         levelObjects.push(pst);
         player.faceParts.push(pst);
+    } else if (HAMSTER.pattern === 'white belly') {
+        const pb = sc.add.ellipse(120, 306, 18, 8, 0xffffff).setAlpha(0.8);
+        levelObjects.push(pb);
+        player.faceParts.push(pb);
     }
 
     // Collisions with pipe walls
@@ -441,24 +455,23 @@ function updateLevel1(sc) {
         player.body.setVelocityY(SETTINGS.jumpPower);
     }
     if (cursors.down.isDown) {
-        player.body.setVelocityY(200);
+        player.body.setVelocityY(500);
     }
 
     // Update face parts to follow player
     if (player.faceParts) {
-        const dx = player.x - 120;
-        const dy = player.y - 300;
-        // Reposition face relative to player body
+        // Base face: eye, nose, ear
         player.faceParts[0].setPosition(player.x + 10, player.y - 6); // eye
         player.faceParts[1].setPosition(player.x + 16, player.y);     // nose
         player.faceParts[2].setPosition(player.x - 2, player.y - 12); // ear
-        if (player.faceParts[3]) {
-            // pattern element
-            if (HAMSTER.pattern === 'spotted') {
-                player.faceParts[3].setPosition(player.x - 8, player.y - 2);
-            } else if (HAMSTER.pattern === 'striped') {
-                player.faceParts[3].setPosition(player.x, player.y - 4);
-            }
+        // Pattern elements follow player
+        if (HAMSTER.pattern === 'spotted' && player.faceParts.length >= 5) {
+            player.faceParts[3].setPosition(player.x - 8, player.y - 5);
+            player.faceParts[4].setPosition(player.x + 2, player.y + 2);
+        } else if (HAMSTER.pattern === 'striped' && player.faceParts[3]) {
+            player.faceParts[3].setPosition(player.x, player.y - 10);
+        } else if (HAMSTER.pattern === 'white belly' && player.faceParts[3]) {
+            player.faceParts[3].setPosition(player.x, player.y + 6);
         }
     }
 
