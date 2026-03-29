@@ -134,6 +134,10 @@ let releasedAnimals;
 // ===== PRELOAD =====
 function preload() {
     this.load.image('ferret', 'sprites/ferret.png');
+    this.load.image('granny-idle', 'sprites/granny-idle.png');
+    this.load.image('granny-suspicious', 'sprites/granny-suspicious.png');
+    this.load.image('granny-chasing', 'sprites/granny-chasing.png');
+    this.load.image('granny-panic', 'sprites/granny-panic.png');
 }
 
 // ===== CREATE =====
@@ -208,12 +212,11 @@ function create() {
     ferret.setDepth(5);
 
     // --- Granny ---
-    granny = this.add.rectangle(
-        900, SETTINGS.shopTop + 140,
-        SETTINGS.grannySize, SETTINGS.grannySize, SETTINGS.grannyColour
-    );
+    granny = this.add.image(900, SETTINGS.shopTop + 140, 'granny-idle');
+    granny.setDisplaySize(SETTINGS.grannySize * 2, SETTINGS.grannySize * 2);
     this.physics.add.existing(granny);
     granny.body.setCollideWorldBounds(true);
+    granny.body.setSize(SETTINGS.grannySize, SETTINGS.grannySize);
     grannyCurrentSpeed = SETTINGS.grannySpeed;
     granny.setDepth(5);
 
@@ -855,6 +858,7 @@ function updateGranny(scene) {
 
         // Phase 1: Shock — granny flees in panic
         if (grannyFleeing && now - grannyShockStart < SETTINGS.grannyShockTime) {
+            granny.setTexture('granny-panic');
             let nearestAnimal = null;
             let nearestDist = Infinity;
             releasedAnimals.children.iterate(animal => {
@@ -865,13 +869,14 @@ function updateGranny(scene) {
             if (nearestAnimal) {
                 const angle = Phaser.Math.Angle.Between(nearestAnimal.x, nearestAnimal.y, granny.x, granny.y);
                 granny.body.setVelocity(Math.cos(angle) * SETTINGS.grannySpeedMax, Math.sin(angle) * SETTINGS.grannySpeedMax);
-                granny.rotation = angle;
+                granny.rotation = angle - Math.PI / 2;
             }
             scene.grannyMoodText.setText('Granny: 😱 HELP!');
             return;
         }
 
         // Phase 2: Recapture — granny recovers and starts catching animals
+        granny.setTexture('granny-chasing');
         if (grannyFleeing && !grannyRecapturing) {
             grannyFleeing = false;
             grannyRecapturing = true;
@@ -900,7 +905,7 @@ function updateGranny(scene) {
                 Math.cos(angle) * SETTINGS.grannyRecaptureSpeed,
                 Math.sin(angle) * SETTINGS.grannyRecaptureSpeed
             );
-            granny.rotation = angle;
+            granny.rotation = angle - Math.PI / 2;
             scene.grannyMoodText.setText('Granny: 😤 Catching animals!');
 
             // Caught it!
@@ -928,7 +933,9 @@ function updateGranny(scene) {
 
     if (pooCount === 0 && dist > SETTINGS.grannyAlertRadius) {
         speed = 30;
-        moodText = 'Granny: 😴 Dozing';
+        moodText = 'Granny: 💤 Idle';
+        granny.setTexture('granny-idle');
+        granny.clearTint();
         if (!granny.wanderTime || scene.time.now > granny.wanderTime) {
             granny.body.setVelocity(
                 Phaser.Math.Between(-30, 30),
@@ -938,19 +945,26 @@ function updateGranny(scene) {
         }
     } else if (dist > SETTINGS.grannyAlertRadius * 1.5 && pooCount < 3) {
         moodText = 'Granny: 🤨 Suspicious';
+        granny.setTexture('granny-suspicious');
+        granny.clearTint();
         moveGrannyToward(ferret.x, ferret.y, speed * 0.5);
     } else {
         moodText = pooCount >= 5 ? 'Granny: 😡 FURIOUS' : 'Granny: 😠 Chasing!';
+        granny.setTexture('granny-chasing');
+        // Tint redder as anger builds
+        const angerRatio = Math.min(1, pooCount / SETTINGS.poosToWin);
+        if (angerRatio > 0.3) {
+            const tintR = 0xff;
+            const tintG = Math.floor(0xff * (1 - angerRatio * 0.6));
+            const tintB = Math.floor(0xff * (1 - angerRatio * 0.6));
+            granny.setTint((tintR << 16) | (tintG << 8) | tintB);
+        } else {
+            granny.clearTint();
+        }
         moveGrannyToward(ferret.x, ferret.y, speed);
     }
 
     scene.grannyMoodText.setText(moodText);
-
-    const angerRatio = Math.min(1, pooCount / SETTINGS.poosToWin);
-    const r = Math.floor(0xcc + (0xff - 0xcc) * angerRatio);
-    const g = Math.floor(0x66 * (1 - angerRatio * 0.7));
-    const b = Math.floor(0x99 * (1 - angerRatio * 0.5));
-    granny.fillColor = (r << 16) | (g << 8) | b;
 }
 
 function moveGrannyToward(targetX, targetY, speed) {
@@ -959,7 +973,7 @@ function moveGrannyToward(targetX, targetY, speed) {
         Math.cos(angle) * speed,
         Math.sin(angle) * speed
     );
-    granny.rotation = angle;
+    granny.rotation = angle - Math.PI / 2;
 }
 
 // ===== LABELS =====
