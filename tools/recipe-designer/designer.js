@@ -228,8 +228,8 @@ function renderGenreEditor(parent, genre) {
     const del = document.createElement('button');
     del.className = 'danger delete-genre-btn';
     del.textContent = 'Delete genre';
-    del.onclick = () => {
-        if (!confirm(`Delete "${genre.name}" and all its sub-types?`)) return;
+    del.onclick = async () => {
+        if (!await confirmModal(`Delete "${genre.name}" and all its sub-types?`)) return;
         data.genres = data.genres.filter(g => g.id !== genre.id);
         selection = { kind: null, genreId: null, subtypeId: null };
         save();
@@ -270,8 +270,8 @@ function renderSubtypeEditor(parent, genre, sub) {
     const delBtn = document.createElement('button');
     delBtn.className = 'danger';
     delBtn.textContent = 'Delete';
-    delBtn.onclick = () => {
-        if (!confirm(`Delete sub-type "${sub.name}"?`)) return;
+    delBtn.onclick = async () => {
+        if (!await confirmModal(`Delete sub-type "${sub.name}"?`)) return;
         genre.subtypes = genre.subtypes.filter(s => s.id !== sub.id);
         selection = { kind: 'genre', genreId: genre.id, subtypeId: null };
         save();
@@ -441,8 +441,8 @@ function listField(label, help, items, schema, onChange) {
 }
 
 // ===== ADD =====
-function addGenre() {
-    const name = prompt('Genre name?');
+async function addGenre() {
+    const name = await promptModal('New genre', 'Genre name…');
     if (!name) return;
     const id = uniqueId(makeId(name), data.genres);
     data.genres.push({ id, name, colour: randomColour(), subtypes: [] });
@@ -452,10 +452,10 @@ function addGenre() {
     renderEditor();
 }
 
-function addSubtype(genreId) {
+async function addSubtype(genreId) {
     const genre = findGenre(genreId);
     if (!genre) return;
-    const name = prompt('Sub-type name?');
+    const name = await promptModal('New sub-type', 'Sub-type name…');
     if (!name) return;
     const id = uniqueId(makeId(name), genre.subtypes);
     genre.subtypes.push({
@@ -543,7 +543,7 @@ async function copyJson() {
 }
 
 async function resetData() {
-    if (!confirm('Reset to the recipes.json file on disk? Your unsaved changes will be lost.')) return;
+    if (!await confirmModal('Reset to the recipes.json file on disk? Your unsaved changes will be lost.')) return;
     const fresh = await loadFromFile();
     if (!fresh) {
         toast('Could not load recipes.json');
@@ -562,6 +562,92 @@ function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     })[c]);
+}
+
+function promptModal(title, placeholder = '') {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+
+        const heading = document.createElement('h3');
+        heading.textContent = title;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = placeholder;
+
+        const actions = document.createElement('div');
+        actions.className = 'modal-actions';
+
+        const cancel = document.createElement('button');
+        cancel.className = 'ghost';
+        cancel.textContent = 'Cancel';
+
+        const ok = document.createElement('button');
+        ok.className = 'primary';
+        ok.textContent = 'Add';
+
+        actions.append(cancel, ok);
+        modal.append(heading, input, actions);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        const cleanup = () => overlay.remove();
+        const submit = () => { cleanup(); resolve(input.value.trim() || null); };
+        const dismiss = () => { cleanup(); resolve(null); };
+
+        ok.onclick = submit;
+        cancel.onclick = dismiss;
+        overlay.onclick = (e) => { if (e.target === overlay) dismiss(); };
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') submit();
+            else if (e.key === 'Escape') dismiss();
+        };
+
+        setTimeout(() => input.focus(), 10);
+    });
+}
+
+function confirmModal(message) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+
+        const p = document.createElement('p');
+        p.textContent = message;
+
+        const actions = document.createElement('div');
+        actions.className = 'modal-actions';
+
+        const cancel = document.createElement('button');
+        cancel.className = 'ghost';
+        cancel.textContent = 'Cancel';
+
+        const ok = document.createElement('button');
+        ok.className = 'danger';
+        ok.textContent = 'Confirm';
+
+        actions.append(cancel, ok);
+        modal.append(p, actions);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        const cleanup = () => overlay.remove();
+        ok.onclick = () => { cleanup(); resolve(true); };
+        cancel.onclick = () => { cleanup(); resolve(false); };
+        overlay.onclick = (e) => { if (e.target === overlay) { cleanup(); resolve(false); } };
+        document.addEventListener('keydown', function esc(e) {
+            if (e.key === 'Escape') { document.removeEventListener('keydown', esc); cleanup(); resolve(false); }
+        });
+
+        setTimeout(() => ok.focus(), 10);
+    });
 }
 
 let toastTimer = null;
