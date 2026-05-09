@@ -164,11 +164,11 @@ async function syncToFile() {
     syncInProgress = true;
     updateStatus();
     try {
+        const snapshot = JSON.stringify(data);            // canonical for dirty-check
         const writable = await fileHandle.createWritable();
-        const json = JSON.stringify(data, null, 2);
-        await writable.write(json);
+        await writable.write(JSON.stringify(data, null, 2));  // pretty-printed on disk
         await writable.close();
-        lastSyncedJson = json;
+        lastSyncedJson = snapshot;
     } catch (e) {
         console.error('Sync failed', e);
         toast('Sync to file failed — changes are still saved in your browser');
@@ -762,15 +762,14 @@ function bindHeader() {
 }
 
 function exportJson() {
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'recipes.json';
     a.click();
     URL.revokeObjectURL(url);
-    lastSyncedJson = json;
+    lastSyncedJson = JSON.stringify(data);
     updateStatus();
     toast('Downloaded recipes.json');
 }
