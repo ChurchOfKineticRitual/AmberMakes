@@ -2,12 +2,47 @@
 let data = null;
 let selection = { kind: null, genreId: null, subtypeId: null }; // kind: 'genre' | 'subtype'
 const STORAGE_KEY = 'recipe-designer-data';
+const SCHEMA_VERSION = 1;
+
+let fileHandle = null;          // FileSystem handle when connected
+let lastSyncedJson = null;      // serialized snapshot last written to file/exported
+let syncTimer = null;
+let syncInProgress = false;
+const SUPPORTS_FS_ACCESS = 'showOpenFilePicker' in window;
 
 // ===== INIT =====
 async function init() {
-    data = loadFromStorage() || await loadFromFile() || seedData();
-    renderSidebar();
     bindHeader();
+
+    // Try to restore a previously connected file handle
+    const restored = await loadStoredHandle();
+    if (restored) {
+        const ok = await ensurePermission(restored, 'readwrite');
+        if (ok) fileHandle = restored;
+    }
+
+    let loaded = null;
+
+    // 1. If we have a file handle, the file is the source of truth
+    if (fileHandle) {
+        loaded = await readFromHandle(fileHandle);
+    }
+
+    // 2. Else try localStorage
+    if (!loaded) loaded = loadFromStorage();
+
+    // 3. Else try the seed file
+    if (!loaded) loaded = await loadFromFile();
+
+    // 4. Else empty state
+    if (!loaded) loaded = seedData();
+
+    data = upgradeSchema(loaded);
+    lastSyncedJson = JSON.stringify(data);
+
+    renderSidebar();
+    updateStatus();
+    window.addEventListener('beforeunload', warnIfDirty);
 }
 
 function loadFromStorage() {
@@ -26,11 +61,234 @@ async function loadFromFile() {
 }
 
 function seedData() {
-    return { personalitySliders: [], genres: [] };
+    return { version: SCHEMA_VERSION, personalitySliders: [], genres: [] };
 }
 
+function upgradeSchema(d) {
+    // Future migrations go here. For now, ensure required fields exist.
+    if (!d.version) d.version = SCHEMA_VERSION;
+    if (!Array.isArray(d.genres)) d.genres = [];
+    if (!Array.isArray(d.personalitySliders)) d.personalitySliders = [];
+    return d;
+}
+
+// Called after every edit. Auto-saves to localStorage immediately, schedules
+// a debounced write to the connected file (if any).
 function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+        console.warn('localStorage save failed', e);
+    }
+    updateStatus();
+    if (fileHandle) {
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(syncToFile, 500);
+    }
+}
+
+// ===== FILE SYSTEM ACCESS =====
+async function connectToFile() {
+    if (!SUPPORTS_FS_ACCESS) {
+        toast('Your browser does not support direct file sync — use Export instead. (Chrome / Edge supported)');
+        return;
+    }
+    try {
+        const [handle] = await window.showOpenFilePicker({
+            types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+            multiple: false
+        });
+        const ok = await ensurePermission(handle, 'readwrite');
+        if (!ok) { toast('Write permission denied'); return; }
+
+        // Try to load whatever's already in the file. If non-empty, ask whether
+        // to use it (file wins) or keep current edits (push to file).
+        const fileData = await readFromHandle(handle);
+        if (fileData && hasContent(fileData) && hasContent(data) &&
+            JSON.stringify(fileData) !== JSON.stringify(data)) {
+            const useFile = await confirmModal(
+                'The file already contains recipes that differ from your current edits. ' +
+                'Click Confirm to LOAD the file (replacing your edits). Cancel to KEEP your edits and overwrite the file on next save.'
+            );
+            if (useFile) {
+                data = upgradeSchema(fileData);
+                lastSyncedJson = JSON.stringify(data);
+                renderSidebar();
+                renderEditor();
+            }
+        } else if (fileData && hasContent(fileData) && !hasContent(data)) {
+            data = upgradeSchema(fileData);
+            lastSyncedJson = JSON.stringify(data);
+            renderSidebar();
+            renderEditor();
+        }
+
+        fileHandle = handle;
+        await storeHandle(handle);
+        await syncToFile();
+        toast('Connected — edits will save to ' + handle.name);
+    } catch (e) {
+        if (e.name !== 'AbortError') {
+            console.error(e);
+            toast('Could not connect: ' + e.message);
+        }
+    }
+}
+
+async function disconnectFile() {
+    fileHandle = null;
+    await clearStoredHandle();
+    updateStatus();
+    toast('Disconnected — changes will only save to your browser');
+}
+
+async function ensurePermission(handle, mode) {
+    if (!handle.queryPermission) return true;
+    let p = await handle.queryPermission({ mode });
+    if (p === 'granted') return true;
+    p = await handle.requestPermission({ mode });
+    return p === 'granted';
+}
+
+async function readFromHandle(handle) {
+    try {
+        const file = await handle.getFile();
+        const text = await file.text();
+        if (!text.trim()) return null;
+        return JSON.parse(text);
+    } catch (e) { return null; }
+}
+
+async function syncToFile() {
+    if (!fileHandle || syncInProgress) return;
+    syncInProgress = true;
+    updateStatus();
+    try {
+        const writable = await fileHandle.createWritable();
+        const json = JSON.stringify(data, null, 2);
+        await writable.write(json);
+        await writable.close();
+        lastSyncedJson = json;
+    } catch (e) {
+        console.error('Sync failed', e);
+        toast('Sync to file failed — changes are still saved in your browser');
+        // Fall back to disconnected state so the user knows something's off
+        fileHandle = null;
+        await clearStoredHandle();
+    } finally {
+        syncInProgress = false;
+        updateStatus();
+    }
+}
+
+function hasContent(d) {
+    if (!d) return false;
+    return (d.genres && d.genres.some(g => g.subtypes && g.subtypes.length > 0)) ||
+           (d.personalitySliders && d.personalitySliders.length > 0);
+}
+
+// ===== INDEXEDDB FOR FILE HANDLE =====
+const DB_NAME = 'recipe-designer';
+const DB_STORE = 'handles';
+
+function openDb() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror   = () => reject(req.error);
+    });
+}
+
+async function storeHandle(handle) {
+    try {
+        const db = await openDb();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(DB_STORE, 'readwrite');
+            tx.objectStore(DB_STORE).put(handle, 'recipes');
+            tx.oncomplete = resolve;
+            tx.onerror = () => reject(tx.error);
+        });
+    } catch (e) { console.warn('Could not persist file handle', e); }
+}
+
+async function loadStoredHandle() {
+    try {
+        const db = await openDb();
+        return await new Promise((resolve, reject) => {
+            const tx = db.transaction(DB_STORE, 'readonly');
+            const req = tx.objectStore(DB_STORE).get('recipes');
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror   = () => reject(req.error);
+        });
+    } catch (e) { return null; }
+}
+
+async function clearStoredHandle() {
+    try {
+        const db = await openDb();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(DB_STORE, 'readwrite');
+            tx.objectStore(DB_STORE).delete('recipes');
+            tx.oncomplete = resolve;
+            tx.onerror = () => reject(tx.error);
+        });
+    } catch (e) { /* ignore */ }
+}
+
+// ===== STATUS BADGE =====
+function isDirty() {
+    return JSON.stringify(data) !== lastSyncedJson;
+}
+
+function updateStatus() {
+    const el = document.getElementById('save-status');
+    if (!el) return;
+    const text = el.querySelector('.status-text');
+
+    el.classList.remove('synced', 'dirty', 'browser', 'error');
+
+    if (fileHandle) {
+        if (syncInProgress) {
+            text.textContent = 'Saving to ' + fileHandle.name + '…';
+            el.classList.add('dirty');
+        } else if (isDirty()) {
+            text.textContent = 'Unsaved changes';
+            el.classList.add('dirty');
+        } else {
+            text.textContent = 'Synced to ' + fileHandle.name;
+            el.classList.add('synced');
+        }
+    } else {
+        text.textContent = SUPPORTS_FS_ACCESS
+            ? 'Browser only — click Connect to file'
+            : 'Browser only — Export to save to disk';
+        el.classList.add('browser');
+    }
+
+    // Update Connect button label
+    const btn = document.getElementById('btn-connect');
+    if (btn) {
+        if (fileHandle) {
+            btn.textContent = 'Disconnect';
+            btn.classList.remove('primary');
+            btn.title = 'Stop syncing to ' + fileHandle.name;
+        } else {
+            btn.textContent = 'Connect to file';
+            btn.classList.add('primary');
+            btn.title = 'Pick recipes.json so edits auto-save to disk';
+            btn.disabled = !SUPPORTS_FS_ACCESS;
+            if (!SUPPORTS_FS_ACCESS) btn.title = 'Direct file sync needs Chrome or Edge — use Export instead';
+        }
+    }
+}
+
+function warnIfDirty(e) {
+    // Only warn if there are unsaved changes that haven't made it to a file/export.
+    if (isDirty() && !fileHandle) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
 }
 
 // ===== ID HELPERS =====
@@ -497,19 +755,23 @@ function bindHeader() {
     document.getElementById('btn-import').onclick = () => document.getElementById('file-input').click();
     document.getElementById('btn-copy').onclick   = copyJson;
     document.getElementById('btn-reset').onclick  = resetData;
+    document.getElementById('btn-connect').onclick = () => fileHandle ? disconnectFile() : connectToFile();
     document.getElementById('btn-add-genre').onclick  = addGenre;
     document.getElementById('btn-add-slider').onclick = addSlider;
     document.getElementById('file-input').onchange = importJson;
 }
 
 function exportJson() {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'recipes.json';
     a.click();
     URL.revokeObjectURL(url);
+    lastSyncedJson = json;
+    updateStatus();
     toast('Downloaded recipes.json');
 }
 
@@ -519,7 +781,7 @@ function importJson(e) {
     const reader = new FileReader();
     reader.onload = () => {
         try {
-            data = JSON.parse(reader.result);
+            data = upgradeSchema(JSON.parse(reader.result));
             save();
             selection = { kind: null, genreId: null, subtypeId: null };
             renderSidebar();
@@ -549,7 +811,7 @@ async function resetData() {
         toast('Could not load recipes.json');
         return;
     }
-    data = fresh;
+    data = upgradeSchema(fresh);
     save();
     selection = { kind: null, genreId: null, subtypeId: null };
     renderSidebar();

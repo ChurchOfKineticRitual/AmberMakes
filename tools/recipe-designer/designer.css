@@ -33,10 +33,12 @@ header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     padding: 12px 20px;
     background: var(--panel);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+    flex-wrap: wrap;
 }
 
 header h1 {
@@ -44,6 +46,50 @@ header h1 {
     font-size: 18px;
     font-weight: 600;
     letter-spacing: 0.3px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.save-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    flex-shrink: 0;
+}
+
+.save-status.synced .status-dot { background: var(--good); }
+.save-status.synced            { color: var(--good); border-color: var(--good); }
+
+.save-status.dirty .status-dot { background: #ff9f3c; animation: pulse 1.2s ease-in-out infinite; }
+.save-status.dirty             { color: #ff9f3c; border-color: #ff9f3c; }
+
+.save-status.browser .status-dot { background: var(--text-dim); }
+.save-status.browser             { color: var(--text-dim); }
+
+.save-status.error .status-dot { background: var(--danger); }
+.save-status.error             { color: var(--danger); border-color: var(--danger); }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
 }
 
 .header-actions {
@@ -62,6 +108,7 @@ button {
     cursor: pointer;
     font-family: inherit;
     transition: background 0.12s, border-color 0.12s;
+    white-space: nowrap;
 }
 
 button:hover {

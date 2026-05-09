@@ -7,8 +7,15 @@
 </head>
 <body>
     <header>
-        <h1>Story Recipe Designer</h1>
+        <div class="header-left">
+            <h1>Story Recipe Designer</h1>
+            <div id="save-status" class="save-status" title="Where your changes are being saved">
+                <span class="status-dot"></span>
+                <span class="status-text">Loading…</span>
+            </div>
+        </div>
         <div class="header-actions">
+            <button id="btn-connect" class="primary" title="Pick recipes.json so edits auto-save to disk">Connect to file</button>
             <button id="btn-export"  title="Download recipes.json">Export</button>
             <button id="btn-import"  title="Load a recipes.json file">Import</button>
             <button id="btn-copy"    title="Copy JSON to clipboard">Copy JSON</button>
