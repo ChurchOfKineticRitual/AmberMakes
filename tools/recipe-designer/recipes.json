@@ -1,0 +1,71 @@
+{
+  "personalitySliders": [
+    { "id": "brave",      "leftLabel": "Cautious",  "rightLabel": "Brave" },
+    { "id": "kind",       "leftLabel": "Cold",      "rightLabel": "Kind" },
+    { "id": "clever",     "leftLabel": "Simple",    "rightLabel": "Clever" },
+    { "id": "honest",     "leftLabel": "Sneaky",    "rightLabel": "Honest" },
+    { "id": "playful",    "leftLabel": "Serious",   "rightLabel": "Playful" }
+  ],
+  "genres": [
+    {
+      "id": "action",
+      "name": "Action",
+      "colour": "#ff5a3c",
+      "subtypes": []
+    },
+    {
+      "id": "romance",
+      "name": "Romance",
+      "colour": "#ff5fae",
+      "subtypes": []
+    },
+    {
+      "id": "scifi",
+      "name": "Sci-Fi",
+      "colour": "#5fa8ff",
+      "subtypes": []
+    },
+    {
+      "id": "horror",
+      "name": "Horror",
+      "colour": "#7a3cff",
+      "subtypes": []
+    },
+    {
+      "id": "adventure",
+      "name": "Adventure",
+      "colour": "#3cdc8a",
+      "subtypes": [
+        {
+          "id": "jungle",
+          "name": "Jungle",
+          "setting": "Dense jungle, vines, humid air, distant howls, half-buried ruins of a forgotten civilisation.",
+          "hook": "The player has a torn map fragment showing a temple at the jungle's heart — something valuable is hidden there.",
+          "cast": [
+            { "archetype": "The Local Guide", "description": "Knows the jungle better than anyone. Hiding something about why they agreed to help." },
+            { "archetype": "The Rival Explorer", "description": "Charming and ruthless. Wants the artefact for themselves." },
+            { "archetype": "The Warning-Giver", "description": "A villager who insists the player turn back." }
+          ],
+          "goal": "Reach the inner chamber of the temple and decide what to do with what's inside.",
+          "beats": [
+            { "title": "Arrival",    "description": "Meet the guide at the jungle's edge. Hear the warning from a local." },
+            { "title": "Obstacle",   "description": "Cross a chasm, solve a ruin puzzle, or face a wild animal." },
+            { "title": "Rivalry",    "description": "Encounter the rival. Choice point: cooperate, deceive, or confront." },
+            { "title": "Discovery", "description": "Reach the chamber. A twist about what the artefact really is." }
+          ],
+          "tone": "Pulpy adventure-serial. Indiana Jones energy. Exclamations, dramatic descriptions, sweat and danger.",
+          "choiceFlavour": "Trust vs suspicion of allies. Brave vs cautious in danger. Keep vs return the artefact."
+        },
+        { "id": "desert", "name": "Desert", "setting": "", "hook": "", "cast": [], "goal": "", "beats": [], "tone": "", "choiceFlavour": "" },
+        { "id": "rescue", "name": "Rescue", "setting": "", "hook": "", "cast": [], "goal": "", "beats": [], "tone": "", "choiceFlavour": "" },
+        { "id": "forest", "name": "Forest", "setting": "", "hook": "", "cast": [], "goal": "", "beats": [], "tone": "", "choiceFlavour": "" }
+      ]
+    },
+    {
+      "id": "mystery",
+      "name": "Mystery",
+      "colour": "#ffc83c",
+      "subtypes": []
+    }
+  ]
+}

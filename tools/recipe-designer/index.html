@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Recipe Designer</title>
+    <link rel="stylesheet" href="designer.css">
+</head>
+<body>
+    <header>
+        <h1>Story Recipe Designer</h1>
+        <div class="header-actions">
+            <button id="btn-export"  title="Download recipes.json">Export</button>
+            <button id="btn-import"  title="Load a recipes.json file">Import</button>
+            <button id="btn-copy"    title="Copy JSON to clipboard">Copy JSON</button>
+            <button id="btn-reset"   title="Reset to the file on disk" class="ghost">Reset</button>
+            <input type="file" id="file-input" accept="application/json" hidden>
+        </div>
+    </header>
+
+    <main>
+        <aside id="sidebar">
+            <section class="side-block">
+                <div class="side-header">
+                    <h2>Genres</h2>
+                    <button id="btn-add-genre" class="mini">+ Genre</button>
+                </div>
+                <ul id="genre-list"></ul>
+            </section>
+
+            <section class="side-block">
+                <div class="side-header">
+                    <h2>Personality Sliders</h2>
+                    <button id="btn-add-slider" class="mini">+ Slider</button>
+                </div>
+                <ul id="slider-list"></ul>
+            </section>
+        </aside>
+
+        <section id="editor">
+            <div id="empty-state" class="empty-state">
+                <p>Pick a sub-type from the sidebar to edit its recipe.</p>
+                <p class="hint">Or click a genre to edit its name and add sub-types.</p>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="designer.js"></script>
+</body>
+</html>
