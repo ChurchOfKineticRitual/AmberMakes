@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Substitute</title>
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=departure-mono@400&display=swap">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            background: #0a0a0a;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            font-family: 'Departure Mono', ui-monospace, monospace;
+            color: #f4e0a8;
+        }
+        #game-container { line-height: 0; }
+        canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@4.1.0/dist/phaser.min.js"></script>
+    <script>
+        if (typeof Phaser === 'undefined') {
+            document.write('<script src="../../_templates/game-template/lib/phaser.min.js"><\/script>');
+        }
+    </script>
+    <script src="dialogues.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

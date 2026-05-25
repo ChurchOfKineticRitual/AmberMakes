@@ -50,7 +50,7 @@ SETTINGS goes at the very top of game.js. This is how Amber tweaks the game — 
 - `my-games/example-platformer/game.js` — a complete working game showing all the patterns together. Use this as your structural reference.
 
 **Phaser rules:**
-- Phaser 3.90.0 — loaded via CDN in index.html, with local fallback at `../../_templates/game-template/lib/phaser.min.js`
+- Phaser 4.1.0 — loaded via CDN in index.html, with local fallback at `../../_templates/game-template/lib/phaser.min.js`
 - Arcade physics ONLY (not Matter.js) — simpler, fewer things to break
 - Single scene. Don't use multi-scene unless she specifically needs it.
 - Config: `{ type: Phaser.AUTO, width: 800, height: 600, backgroundColor: '#1a1a2e', physics: { default: 'arcade', arcade: { gravity: { y: SETTINGS.gravity }, debug: false } }, scene: { preload, create, update } }`

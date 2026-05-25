@@ -1,23 +1,171 @@
 {
   "personalitySliders": [
-    { "id": "brave",      "leftLabel": "Cautious",  "rightLabel": "Brave" },
-    { "id": "kind",       "leftLabel": "Cold",      "rightLabel": "Kind" },
-    { "id": "clever",     "leftLabel": "Simple",    "rightLabel": "Clever" },
-    { "id": "honest",     "leftLabel": "Sneaky",    "rightLabel": "Honest" },
-    { "id": "playful",    "leftLabel": "Serious",   "rightLabel": "Playful" }
+    {
+      "id": "brave",
+      "leftLabel": "Cautious",
+      "rightLabel": "Brave"
+    },
+    {
+      "id": "kind",
+      "leftLabel": "Cold",
+      "rightLabel": "Kind"
+    },
+    {
+      "id": "clever",
+      "leftLabel": "Simple",
+      "rightLabel": "Clever"
+    },
+    {
+      "id": "honest",
+      "leftLabel": "Sneaky",
+      "rightLabel": "Honest"
+    },
+    {
+      "id": "playful",
+      "leftLabel": "Serious",
+      "rightLabel": "Playful"
+    }
   ],
   "genres": [
     {
       "id": "action",
       "name": "Action",
       "colour": "#ff5a3c",
-      "subtypes": []
+      "subtypes": [
+        {
+          "id": "burgled",
+          "name": "Burgled",
+          "setting": "- the player is at home\n- the player is just a normal dude\n- it's the year of 2026\n- house is pretty messy and small",
+          "hook": "- the player has an expensive anklet\n- the burglar wants the anklet but didn't expect the player to be wearing it ",
+          "cast": [
+            {
+              "archetype": "The Burglar",
+              "description": "They want the player's expensive anklet but they didn't expect the player to be wearing it. They are also trying to prevent the player from calling the police. "
+            },
+            {
+              "archetype": "Police",
+              "description": "If the player manages to call the police, they show up at the door and handcuff the burglar."
+            }
+          ],
+          "goal": "- to protect the anklet\n- to call the police",
+          "beats": [
+            {
+              "title": "Chilling at Home",
+              "description": "The player is at home on the sofa watching Modern Family"
+            },
+            {
+              "title": "Buglar Arrives",
+              "description": "The burglar sneaks in through the window and realises that the player is wearing the anklet"
+            },
+            {
+              "title": "The Fight",
+              "description": "The burglar and the player begin to fight, punching, kicking and tackling each other to the ground all while the player is trying to get to the phone to call the the police"
+            },
+            {
+              "title": "Calling Police",
+              "description": "The player manages to reach the phone"
+            },
+            {
+              "title": "Police Arrive",
+              "description": "A bunch of police men arrive and handcuff the burglar"
+            }
+          ],
+          "tone": "Very pulpy and fast moving",
+          "choiceFlavour": "Weather to hide, fight or run, what object to pick up and use, which way to get to the phone on the other side of the room"
+        },
+        {
+          "id": "ahoy-captave",
+          "name": "Ahoy, Captave!",
+          "setting": "- the player is being held captive on a pirate ship\n- they are at sea\n- it is the year 1900",
+          "hook": "- the player knows where a treasure chest is",
+          "cast": [
+            {
+              "archetype": "Pirates",
+              "description": "They want the player to tell them where the treasure chest is"
+            }
+          ],
+          "goal": "- the player is trying to escape somehow\n- the player is trying not to give away where the treasure chest is",
+          "beats": [
+            {
+              "title": "Wakes Up",
+              "description": "The player wakes up in the pirate ship in the middle of the ocean, surrounded by angry looking pirates"
+            },
+            {
+              "title": "Explanation",
+              "description": "The captain explains that if the player tells him where the treasure chest is, he will set them free"
+            },
+            {
+              "title": "Idea",
+              "description": "The player notices some flares at the other end of the ship"
+            },
+            {
+              "title": "Fight",
+              "description": "The player has to fight and defeat each one of the pirates to get to the flares"
+            },
+            {
+              "title": "Rescue",
+              "description": "The player fires the flares and about an hour later, a rescue boat arrives"
+            }
+          ],
+          "tone": "Pulpy and fast moving",
+          "choiceFlavour": "What objects to fight with, what to say to the pirates, which order to fight the pirates"
+        },
+        {
+          "id": "all-in-a-day-s-work",
+          "name": "All in a Day's Work",
+          "setting": "- the player is a member of the police\n- it is the year 2026\n- the story starts in an office, then in an art gallery",
+          "hook": "- the player is a member of the police \n- somebody is stealing the Mona Lisa from an art gallery",
+          "cast": [
+            {
+              "archetype": "Thief",
+              "description": "The thief wants the Mona Lisa"
+            },
+            {
+              "archetype": "Gallery Owner",
+              "description": "They own the gallery and are paying the player to get the Mona Lisa back"
+            }
+          ],
+          "goal": "- catch the criminal\n- arrest the criminal\n- return the Mona Lisa",
+          "beats": [
+            {
+              "title": "Call",
+              "description": "The player is in their office with a donut and a mug of coffee when they get a call from the gallery owner"
+            },
+            {
+              "title": "Hunt",
+              "description": "The player arrives and hunts down the thief"
+            },
+            {
+              "title": "Fight",
+              "description": "The player and the thief begin to fight"
+            },
+            {
+              "title": "Handcuffed",
+              "description": "The player handcuffs the thief and returns the Mona Lisa"
+            }
+          ],
+          "tone": "Pulpy and fast moving",
+          "choiceFlavour": "Weather to sneak up on the thief or not, weather to just satay in the office eating their donut"
+        }
+      ]
     },
     {
       "id": "romance",
       "name": "Romance",
       "colour": "#ff5fae",
-      "subtypes": []
+      "subtypes": [
+        {
+          "id": "forbidden-love",
+          "name": "Forbidden Love",
+          "setting": "",
+          "hook": "",
+          "cast": [],
+          "goal": "",
+          "beats": [],
+          "tone": "",
+          "choiceFlavour": ""
+        }
+      ]
     },
     {
       "id": "scifi",
@@ -42,23 +190,74 @@
           "setting": "Dense jungle, vines, humid air, distant howls, half-buried ruins of a forgotten civilisation.",
           "hook": "The player has a torn map fragment showing a temple at the jungle's heart — something valuable is hidden there.",
           "cast": [
-            { "archetype": "The Local Guide", "description": "Knows the jungle better than anyone. Hiding something about why they agreed to help." },
-            { "archetype": "The Rival Explorer", "description": "Charming and ruthless. Wants the artefact for themselves." },
-            { "archetype": "The Warning-Giver", "description": "A villager who insists the player turn back." }
+            {
+              "archetype": "The Local Guide",
+              "description": "Knows the jungle better than anyone. Hiding something about why they agreed to help."
+            },
+            {
+              "archetype": "The Rival Explorer",
+              "description": "Charming and ruthless. Wants the artefact for themselves."
+            },
+            {
+              "archetype": "The Warning-Giver",
+              "description": "A villager who insists the player turn back."
+            }
           ],
           "goal": "Reach the inner chamber of the temple and decide what to do with what's inside.",
           "beats": [
-            { "title": "Arrival",    "description": "Meet the guide at the jungle's edge. Hear the warning from a local." },
-            { "title": "Obstacle",   "description": "Cross a chasm, solve a ruin puzzle, or face a wild animal." },
-            { "title": "Rivalry",    "description": "Encounter the rival. Choice point: cooperate, deceive, or confront." },
-            { "title": "Discovery", "description": "Reach the chamber. A twist about what the artefact really is." }
+            {
+              "title": "Arrival",
+              "description": "Meet the guide at the jungle's edge. Hear the warning from a local."
+            },
+            {
+              "title": "Obstacle",
+              "description": "Cross a chasm, solve a ruin puzzle, or face a wild animal."
+            },
+            {
+              "title": "Rivalry",
+              "description": "Encounter the rival. Choice point: cooperate, deceive, or confront."
+            },
+            {
+              "title": "Discovery",
+              "description": "Reach the chamber. A twist about what the artefact really is."
+            }
           ],
           "tone": "Pulpy adventure-serial. Indiana Jones energy. Exclamations, dramatic descriptions, sweat and danger.",
           "choiceFlavour": "Trust vs suspicion of allies. Brave vs cautious in danger. Keep vs return the artefact."
         },
-        { "id": "desert", "name": "Desert", "setting": "", "hook": "", "cast": [], "goal": "", "beats": [], "tone": "", "choiceFlavour": "" },
-        { "id": "rescue", "name": "Rescue", "setting": "", "hook": "", "cast": [], "goal": "", "beats": [], "tone": "", "choiceFlavour": "" },
-        { "id": "forest", "name": "Forest", "setting": "", "hook": "", "cast": [], "goal": "", "beats": [], "tone": "", "choiceFlavour": "" }
+        {
+          "id": "desert",
+          "name": "Desert",
+          "setting": "",
+          "hook": "",
+          "cast": [],
+          "goal": "",
+          "beats": [],
+          "tone": "",
+          "choiceFlavour": ""
+        },
+        {
+          "id": "rescue",
+          "name": "Rescue",
+          "setting": "",
+          "hook": "",
+          "cast": [],
+          "goal": "",
+          "beats": [],
+          "tone": "",
+          "choiceFlavour": ""
+        },
+        {
+          "id": "forest",
+          "name": "Forest",
+          "setting": "",
+          "hook": "",
+          "cast": [],
+          "goal": "",
+          "beats": [],
+          "tone": "",
+          "choiceFlavour": ""
+        }
       ]
     },
     {
@@ -67,5 +266,6 @@
       "colour": "#ffc83c",
       "subtypes": []
     }
-  ]
+  ],
+  "version": 1
 }
