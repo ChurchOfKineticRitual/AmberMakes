@@ -125,6 +125,8 @@ Prompt pattern for clean game sprites: "2D game sprite, [description], isolated 
 
 ## What NOT to Do
 
+These rules apply to quick arcade-style games. If a game folder has its own `docs/` with a design spec (e.g. `my-games/the-substitute/docs/`), that spec governs its stack and structure — defer to it.
+
 - Don't use npm, webpack, bundlers, or build tools. Everything runs from static files.
 - Don't create multiple .js files per game. One game.js.
 - Don't use ES modules or imports in game code. Phaser is loaded via script tag.
