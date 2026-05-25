@@ -67,6 +67,15 @@ SETTINGS goes at the very top of game.js. This is how Amber tweaks the game — 
 | `/undo` | Undo the last change (git revert) |
 | `/make-sprite "[description]"` | Generate a sprite using AI and add it to the game |
 | `/ship [game]` | Deploy to a live URL via Netlify |
+| `/wrap` | End the session: commit, push, update notes if anything new was learned |
+
+---
+
+## Session Management
+
+At the end of every working session, run `/wrap`. It commits any pending changes, pushes to GitHub, and updates this CLAUDE.md only if something genuinely non-obvious was learned (e.g. a new safety-filter workaround, a Phaser quirk).
+
+For the full model — when to use `/compact` vs `/clear`, what counts as worth noting, how the two-machine sync works — read `_reference/session-management.md` once. You don't need to re-read it every session; the principles stay stable.
 
 ---
 
