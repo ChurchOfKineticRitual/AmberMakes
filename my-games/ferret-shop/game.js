@@ -64,17 +64,27 @@ const SETTINGS = {
 
     // Win condition
     poosToWin: 10,
+
+    // Sound (set soundOn to false for silence, or change the volume 0-1)
+    soundOn: true,
+    soundVolume: 0.6,
 };
 
 // ===== ANIMAL TYPES =====
+// `sprite` is the texture key; `faces` is which way the artwork points, which
+// decides the rotation offset (see rotationFor() below). NB2 picked the facing
+// for each one, so it is recorded per animal rather than assumed.
 const ANIMAL_TYPES = [
-    { name: 'mouse',   colour: 0xccccaa, size: 12, emoji: '🐭' },
-    { name: 'hamster', colour: 0xffaa66, size: 14, emoji: '🐹' },
-    { name: 'rabbit',  colour: 0xeeeeee, size: 16, emoji: '🐰' },
-    { name: 'parrot',  colour: 0x44cc44, size: 14, emoji: '🦜' },
-    { name: 'cat',     colour: 0xff8866, size: 18, emoji: '🐱' },
-    { name: 'turtle',  colour: 0x448844, size: 16, emoji: '🐢' },
+    { name: 'mouse',   colour: 0xccccaa, size: 12, emoji: '🐭', sprite: 'mouse',   faces: 'down' },
+    { name: 'hamster', colour: 0xffaa66, size: 14, emoji: '🐹', sprite: 'hamster', faces: 'up'   },
+    { name: 'rabbit',  colour: 0xeeeeee, size: 16, emoji: '🐰', sprite: 'rabbit',  faces: 'up'   },
+    { name: 'parrot',  colour: 0x44cc44, size: 14, emoji: '🦜', sprite: 'budgie',  faces: 'up'   },
+    { name: 'cat',     colour: 0xff8866, size: 18, emoji: '🐱', sprite: 'cat',     faces: 'down' },
+    { name: 'turtle',  colour: 0x448844, size: 16, emoji: '🐢', sprite: 'turtle',  faces: 'up'   },
 ];
+
+// How much bigger than its collision box an animal is drawn.
+const ANIMAL_SPRITE_SCALE = 1.7;
 
 // ===== GAME CONFIG =====
 const config = {
@@ -138,6 +148,66 @@ function preload() {
     this.load.image('granny-suspicious', 'sprites/granny-suspicious.png');
     this.load.image('granny-chasing', 'sprites/granny-chasing.png');
     this.load.image('granny-panic', 'sprites/granny-panic.png');
+    // Caged animals
+    this.load.image('mouse', 'sprites/mouse.png');
+    this.load.image('hamster', 'sprites/hamster.png');
+    this.load.image('rabbit', 'sprites/rabbit.png');
+    this.load.image('budgie', 'sprites/budgie.png');
+    this.load.image('cat', 'sprites/cat.png');
+    this.load.image('turtle', 'sprites/turtle.png');
+    // Items and furniture
+    this.load.image('treat', 'sprites/treat.png');
+    this.load.image('poo', 'sprites/poo.png');
+    this.load.image('key', 'sprites/key.png');
+    this.load.image('release-button', 'sprites/release-button.png');
+    this.load.image('cage-door', 'sprites/cage-door.png');
+    // Sounds (Kenney, CC0). Two formats because Safari will not play ogg —
+    // Phaser picks whichever the browser supports.
+    this.load.audio('sfx-treat', ['sounds/pepSound1.ogg', 'sounds/pepSound1.mp3']);
+    this.load.audio('sfx-poo',   ['sounds/highUp.ogg',    'sounds/highUp.mp3']);
+    this.load.audio('sfx-caught',['sounds/bump.ogg',      'sounds/bump.mp3']);
+    this.load.audio('sfx-door',  ['sounds/pepSound2.ogg', 'sounds/pepSound2.mp3']);
+}
+
+// ===== SPRITE HELPERS =====
+//
+// setDisplaySize() works by writing scaleX/scaleY, so after it runs an image's
+// scale is NOT 1 — it is whatever was needed to hit that size. Any tween that
+// animates scale therefore has to start from that value. Tweening to a literal
+// 1.2 would snap the image to 1.2x its FILE size instead, which is how the
+// first sprite pass ended up with giant treats. fitSprite() records the base
+// scale on the object so tweens can multiply it.
+
+function fitSprite(obj, w, h) {
+    obj.setDisplaySize(w, h);
+    obj.baseScaleX = obj.scaleX;
+    obj.baseScaleY = obj.scaleY;
+    return obj;
+}
+
+// Size by width, keeping the artwork's own aspect ratio (nothing gets squashed).
+function fitSpriteWidth(obj, w) {
+    return fitSprite(obj, w, w * (obj.height / obj.width));
+}
+
+// Size so the LONGEST side is `n`, keeping aspect. Used for the animals, whose
+// sprites range from tall-and-thin (budgie) to nearly square (turtle).
+function fitSpriteLongest(obj, n) {
+    const scale = n / Math.max(obj.width, obj.height);
+    return fitSprite(obj, obj.width * scale, obj.height * scale);
+}
+
+// One place to play a sound, so SETTINGS.soundOn and soundVolume actually
+// govern all of them. `vol` is a per-sound balance on top of the master.
+function playSfx(scene, key, vol) {
+    if (!SETTINGS.soundOn) return;
+    scene.sound.play(key, { volume: SETTINGS.soundVolume * (vol === undefined ? 1 : vol) });
+}
+
+// Phaser's atan2 gives 0 for EAST, so artwork has to be rotated onto that.
+// Sprite drawn facing UP  -> +PI/2.  Facing DOWN -> -PI/2.
+function facingOffset(faces) {
+    return faces === 'up' ? Math.PI / 2 : -Math.PI / 2;
 }
 
 // ===== CREATE =====
@@ -175,7 +245,7 @@ function create() {
     // Desk is at (1000, shopTop+90, 200x60), so front edge is at y = shopTop+90+30+2
     const keyX = 1020;
     const keyY = SETTINGS.shopTop + 90 + 34;  // just below the desk's front edge
-    keyItem = this.add.rectangle(keyX, keyY, SETTINGS.keySize, SETTINGS.keySize * 0.6, SETTINGS.keyColour);
+    keyItem = fitSpriteWidth(this.add.image(keyX, keyY, 'key'), SETTINGS.keySize * 1.8);
     this.physics.add.existing(keyItem, true);
     keyItem.body.updateFromGameObject();
     keyItem.setDepth(3);
@@ -382,16 +452,17 @@ function buildSupplyCloset(scene) {
     scene.add.text(doorX, SETTINGS.shopTop - 8, '🔒', { fontSize: '12px' }).setOrigin(0.5).setDepth(5);
 
     // Release button inside closet
-    releaseButton = scene.add.circle(150, 80, 20, 0xff4444);
+    releaseButton = fitSprite(scene.add.image(150, 80, 'release-button'), 44, 44);
     releaseButton.setDepth(3);
-    scene.add.text(150, 80, 'RELEASE', {
-        fontSize: '7px', fill: '#ffffff', fontFamily: 'monospace', align: 'center'
+    scene.add.text(150, 108, 'RELEASE', {
+        fontSize: '8px', fill: '#ffffff', fontFamily: 'monospace', align: 'center'
     }).setOrigin(0.5).setDepth(4);
 
-    // Button pulsing
+    // Button pulsing — multiplies the fitted scale, never replaces it
     scene.tweens.add({
         targets: releaseButton,
-        scaleX: 1.1, scaleY: 1.1,
+        scaleX: releaseButton.baseScaleX * 1.1,
+        scaleY: releaseButton.baseScaleY * 1.1,
         duration: 800, yoyo: true, repeat: -1,
         ease: 'Sine.easeInOut'
     });
@@ -480,7 +551,7 @@ function createCage(scene, x, y, w, h, animalType, doorSide) {
         // Right wall
         cage.walls.push(addWall(scene, x + w / 2 - wallT / 2, y, wallT, h));
         // Door (top side)
-        cage.door = scene.add.rectangle(x, y - h / 2 + wallT / 2, w - wallT * 2, wallT + 2, SETTINGS.doorColour);
+        cage.door = fitSprite(scene.add.image(x, y - h / 2 + wallT / 2, 'cage-door'), w - wallT * 2, wallT + 2);
         cage.door.setDepth(4);
         cage.doorBody = addWall(scene, x, y - h / 2 + wallT / 2, w - wallT * 2, wallT + 2);
     } else if (doorSide === 'right') {
@@ -491,7 +562,8 @@ function createCage(scene, x, y, w, h, animalType, doorSide) {
         // Left wall
         cage.walls.push(addWall(scene, x - w / 2 + wallT / 2, y, wallT, h));
         // Door (right side)
-        cage.door = scene.add.rectangle(x + w / 2 - wallT / 2, y, wallT + 2, h - wallT * 2, SETTINGS.doorColour);
+        cage.door = fitSprite(scene.add.image(x + w / 2 - wallT / 2, y, 'cage-door'), h - wallT * 2, wallT + 2);
+        cage.door.setRotation(Math.PI / 2);   // stand the gate up in the opening
         cage.door.setDepth(4);
         cage.doorBody = addWall(scene, x + w / 2 - wallT / 2, y, wallT + 2, h - wallT * 2);
     }
@@ -502,9 +574,13 @@ function createCage(scene, x, y, w, h, animalType, doorSide) {
 
     // Animal inside (if not ferret cage)
     if (animalType) {
-        const animal = scene.add.rectangle(x, y, animalType.size, animalType.size, animalType.colour);
+        const animal = fitSpriteLongest(
+            scene.add.image(x, y, animalType.sprite),
+            animalType.size * ANIMAL_SPRITE_SCALE
+        );
         animal.setDepth(2);
         animal.animalType = animalType;
+        animal.faceOffset = facingOffset(animalType.faces);
         animal.cageBounds = { x, y, w: w - 20, h: h - 20 };
         animal.wanderTime = 0;
         cage.animal = animal;
@@ -519,6 +595,7 @@ function createCage(scene, x, y, w, h, animalType, doorSide) {
 function openCageDoor(scene, cage) {
     if (cage.open) return;
     cage.open = true;
+    playSfx(scene, 'sfx-door', 0.7);
 
     // Remove door physics body
     if (cage.doorBody) {
@@ -531,12 +608,13 @@ function openCageDoor(scene, cage) {
         scene.tweens.add({
             targets: cage.door,
             alpha: 0.2,
-            scaleX: cage.doorSide === 'top' ? 0.3 : 1,
-            scaleY: cage.doorSide === 'right' ? 0.3 : 1,
+            scaleX: cage.door.baseScaleX * 0.3,
+            scaleY: cage.door.baseScaleY,
             duration: 300,
             ease: 'Power2'
         });
-        cage.door.fillColor = SETTINGS.doorOpenColour;
+        // Images tint; only Rectangles have fillColor.
+        cage.door.setTint(SETTINGS.doorOpenColour);
     }
 
     // Mark ferret as escaped if this is the ferret cage
@@ -560,6 +638,11 @@ function releaseAllAnimals(scene) {
             // Give the animal physics and release it
             scene.physics.add.existing(cage.animal);
             cage.animal.body.setCollideWorldBounds(true);
+            // Body is left at the sprite's on-screen size. Don't call
+            // body.setSize(animalType.size, ...) here: Arcade multiplies what
+            // you pass by the sprite's scale, and these sprites are scaled DOWN
+            // from a 64px texture, so that shrinks the body to ~4px and the
+            // animals walk through the shop walls.
             cage.animal.released = true;
             cage.animal.setDepth(5);
             releasedAnimals.add(cage.animal);
@@ -719,19 +802,19 @@ function spawnTreats(scene) {
     ];
 
     treatPositions.forEach(pos => {
-        const treat = scene.add.rectangle(
-            pos.x, pos.y,
-            SETTINGS.treatSize, SETTINGS.treatSize,
-            SETTINGS.treatColour
+        const treat = fitSpriteWidth(
+            scene.add.image(pos.x, pos.y, 'treat'),
+            SETTINGS.treatSize * 1.8
         );
         treats.add(treat);
         treat.body.updateFromGameObject();
         treat.setDepth(0);
 
-        // Gentle pulse
+        // Gentle pulse — multiplies the fitted scale, never replaces it
         scene.tweens.add({
             targets: treat,
-            scaleX: 1.2, scaleY: 1.2,
+            scaleX: treat.baseScaleX * 1.2,
+            scaleY: treat.baseScaleY * 1.2,
             duration: 800, yoyo: true, repeat: -1,
             ease: 'Sine.easeInOut',
             delay: Phaser.Math.Between(0, 500)
@@ -747,6 +830,7 @@ function collectTreat(ferretObj, treat) {
     treat.setActive(false);
     score += SETTINGS.treatPoints;
     treatsEaten++;
+    playSfx(this, 'sfx-treat', 0.5);   // quieter: this one fires a lot
 
     // Respawn this treat after a delay
     this.time.delayedCall(SETTINGS.treatRespawnTime, () => {
@@ -778,17 +862,22 @@ function dropPoo(scene, time) {
     lastPooTime = time;
     pooCharges--;
 
-    const poo = scene.add.circle(ferret.x, ferret.y, SETTINGS.pooSize, SETTINGS.pooColour);
+    const poo = fitSpriteWidth(
+        scene.add.image(ferret.x, ferret.y, 'poo'),
+        SETTINGS.pooSize * 2.2
+    );
     poo.setDepth(0);
     poos.add(poo);
 
-    poo.setScale(0.3);
+    // Pop in from small — both ends of the tween are relative to the fitted scale
+    poo.setScale(poo.baseScaleX * 0.3, poo.baseScaleY * 0.3);
     scene.tweens.add({
         targets: poo,
-        scaleX: 1, scaleY: 1,
+        scaleX: poo.baseScaleX, scaleY: poo.baseScaleY,
         duration: 200, ease: 'Back.easeOut'
     });
 
+    playSfx(scene, 'sfx-poo', 0.8);
     pooCount++;
     score += SETTINGS.pooPoints;
     scoreText.setText('Treats: ' + treatsEaten);
@@ -820,7 +909,7 @@ function updateCageAnimals(scene) {
             const tx = b.x + Phaser.Math.Between(-b.w / 3, b.w / 3);
             const ty = b.y + Phaser.Math.Between(-b.h / 3, b.h / 3);
             const angle = Phaser.Math.Angle.Between(a.x, a.y, tx, ty);
-            const speed = SETTINGS.animalSpeed;
+            a.rotation = angle + a.faceOffset;
 
             // Move toward target
             scene.tweens.add({
@@ -841,6 +930,7 @@ function updateReleasedAnimals(scene) {
 
         // Chase granny!
         const angle = Phaser.Math.Angle.Between(animal.x, animal.y, granny.x, granny.y);
+        animal.rotation = angle + animal.faceOffset;
         animal.body.setVelocity(
             Math.cos(angle) * SETTINGS.animalChaseSpeed,
             Math.sin(angle) * SETTINGS.animalChaseSpeed
@@ -998,7 +1088,8 @@ function caughtByGranny(ferretObj, grannyObj) {
 
     this.physics.pause();
     gameOver = true;
-    ferret.fillColor = 0xff0000;
+    playSfx(this, 'sfx-caught', 1);
+    ferret.setTint(0xff0000);
     this.cameras.main.shake(300, 0.01);
 
     this.add.text(

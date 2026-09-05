@@ -1,94 +1,144 @@
 {
   "project": "Ferret Shop",
-  "style": "2D pixel art, top-down view, retro game style, clean edges, isolated on solid white background, no shadow",
-  "model": "google/nano-banana-2/text-to-image",
-  "output_dir": "/Users/jc/Wisdom/WORK/PROJECTS/Amber/AmberMakes/my-games/ferret-shop/sprites",
-  "eagle_api": "http://localhost:41595",
-  "eagle_folder": "Ferret Shop Sprites",
+  "pipeline": "NB2 on solid magenta #FF00FF -> magick -fuzz 20% -transparent magenta -trim +repage -resize 2N -resize N",
+  "style": "2D top-down game sprite, seen from directly above, flat cartoon style, clean edges, no shadow, isolated on solid magenta #FF00FF background",
+  "model": "google/nano-banana-2/text-to-image (via wisdom-image-gen --model nb2)",
+  "generated": "05Sep26s (animals, items, furniture) / 08Mar26u (ferret, granny)",
+  "notes": [
+    "Magenta keys better than white: white edges bleed into the transparency.",
+    "NB2 picks its own aspect from the prompt. A square-worded sprite prompt returns 1024x1024; ask for a wide object and it returns 1408x768.",
+    "WaveSpeed's safety filter rejects 'ferret', 'parrot' and 'medieval key'. Use 'weasel', 'budgie' and 'cartoon key'.",
+    "`faces` is which way the artwork points, and it decides the rotation offset in game.js: up -> +PI/2, down -> -PI/2. NB2 chose these, they were not requested, so each one is recorded rather than assumed.",
+    "Sprite files are deliberately larger than their on-screen size so they stay crisp; game.js scales them with setDisplaySize()."
+  ],
   "sprites": [
     {
       "id": "ferret",
       "filename": "ferret.png",
-      "prompt": "2D pixel art game sprite, top-down bird's eye view of a cute brown ferret, elongated slinky body with short legs, warm brown fur with cream belly, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Player character — replaces ferretColour rectangle",
-      "display_size": "30x18"
+      "file_size_px": "32x90",
+      "game_element": "Player character",
+      "faces": "up",
+      "display": "ferretSize x ferretLength, 1.5x"
     },
     {
-      "id": "granny",
-      "filename": "granny.png",
-      "prompt": "2D pixel art game sprite, top-down bird's eye view of an elderly grandmother shopkeeper, pink cardigan, grey hair in a bun, round body, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Enemy — replaces grannyColour rectangle",
-      "display_size": "28x28"
+      "id": "granny-idle",
+      "filename": "granny-idle.png",
+      "file_size_px": "~64",
+      "game_element": "Granny, dozing",
+      "faces": "down",
+      "display": "grannySize 2x"
+    },
+    {
+      "id": "granny-suspicious",
+      "filename": "granny-suspicious.png",
+      "file_size_px": "~64",
+      "game_element": "Granny, alerted",
+      "faces": "down",
+      "display": "grannySize 2x"
+    },
+    {
+      "id": "granny-chasing",
+      "filename": "granny-chasing.png",
+      "file_size_px": "~64",
+      "game_element": "Granny, recapturing",
+      "faces": "down",
+      "display": "grannySize 2x"
+    },
+    {
+      "id": "granny-panic",
+      "filename": "granny-panic.png",
+      "file_size_px": "~64",
+      "game_element": "Granny, fleeing loose animals",
+      "faces": "down",
+      "display": "grannySize 2x"
     },
     {
       "id": "mouse",
       "filename": "mouse.png",
-      "prompt": "2D pixel art game sprite, top-down bird's eye view of a small grey mouse, round ears, thin pink tail, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Cage animal — replaces mouse rectangle",
-      "display_size": "12x12"
+      "file_size_px": "38x64",
+      "game_element": "Caged animal",
+      "faces": "down",
+      "display": "longest side = size x 1.7"
     },
     {
       "id": "hamster",
       "filename": "hamster.png",
-      "prompt": "2D pixel art game sprite, top-down bird's eye view of a chubby orange hamster, round fluffy body, tiny ears, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Cage animal — replaces hamster rectangle",
-      "display_size": "14x14"
+      "file_size_px": "59x64",
+      "game_element": "Caged animal",
+      "faces": "up",
+      "display": "longest side = size x 1.7"
     },
     {
       "id": "rabbit",
       "filename": "rabbit.png",
-      "prompt": "2D pixel art game sprite, top-down bird's eye view of a white rabbit, long floppy ears, fluffy round body, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Cage animal — replaces rabbit rectangle",
-      "display_size": "16x16"
+      "file_size_px": "46x64",
+      "game_element": "Caged animal",
+      "faces": "up",
+      "display": "longest side = size x 1.7"
     },
     {
-      "id": "parrot",
-      "filename": "parrot.png",
-      "prompt": "2D pixel art game sprite, top-down bird's eye view of a bright green parrot, colourful wing feathers with red and blue tips, wings folded, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Cage animal — replaces parrot rectangle",
-      "display_size": "14x14"
+      "id": "budgie",
+      "filename": "budgie.png",
+      "file_size_px": "26x64",
+      "game_element": "Caged animal (ANIMAL_TYPES 'parrot')",
+      "faces": "up",
+      "display": "longest side = size x 1.7"
     },
     {
       "id": "cat",
       "filename": "cat.png",
-      "prompt": "2D pixel art game sprite, top-down bird's eye view of an orange tabby cat, round body with stripe markings, curled tail, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Cage animal — replaces cat rectangle",
-      "display_size": "18x18"
+      "file_size_px": "26x64",
+      "game_element": "Caged animal",
+      "faces": "down",
+      "display": "longest side = size x 1.7"
     },
     {
       "id": "turtle",
       "filename": "turtle.png",
-      "prompt": "2D pixel art game sprite, top-down bird's eye view of a green turtle, detailed hexagonal shell pattern, small legs poking out, viewed directly from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Cage animal — replaces turtle rectangle",
-      "display_size": "16x16"
-    },
-    {
-      "id": "poo",
-      "filename": "poo.png",
-      "prompt": "2D pixel art game sprite, cute cartoon poo pile, classic swirl shape, warm brown colour, cheerful style with tiny eyes, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Dropped poo — replaces pooColour circle",
-      "display_size": "20x20"
+      "file_size_px": "46x64",
+      "game_element": "Caged animal",
+      "faces": "up",
+      "display": "longest side = size x 1.7"
     },
     {
       "id": "treat",
       "filename": "treat.png",
-      "prompt": "2D pixel art game sprite, pet treat biscuit, bone-shaped orange dog biscuit with speckled texture, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Collectible — replaces treatColour rectangle",
-      "display_size": "12x12"
+      "file_size_px": "48x27",
+      "game_element": "Collectible treat",
+      "faces": "n/a",
+      "display": "treatSize x 1.8 wide, aspect kept"
+    },
+    {
+      "id": "poo",
+      "filename": "poo.png",
+      "file_size_px": "48x48",
+      "game_element": "Dropped poo",
+      "faces": "n/a",
+      "display": "pooSize x 2.2 wide, aspect kept"
     },
     {
       "id": "key",
       "filename": "key.png",
-      "prompt": "2D pixel art game sprite, ornate golden key, classic medieval key shape with round bow and notched bit, shiny gold colour, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Pickup item — replaces keyColour rectangle",
-      "display_size": "14x8"
+      "file_size_px": "48x19",
+      "game_element": "Supply-closet key",
+      "faces": "n/a",
+      "display": "keySize x 1.8 wide, aspect kept"
     },
     {
       "id": "release-button",
       "filename": "release-button.png",
-      "prompt": "2D pixel art game sprite, top-down view of a big red emergency button on a grey metal base, round mushroom-head button, viewed from above, isolated on solid white background, clean crisp edges, no shadow, retro 16-bit game style",
-      "game_element": "Interactive button — replaces red circle",
-      "display_size": "40x40"
+      "file_size_px": "96x96",
+      "game_element": "Release button in the supply closet",
+      "faces": "n/a",
+      "display": "44x44"
+    },
+    {
+      "id": "cage-door",
+      "filename": "cage-door.png",
+      "file_size_px": "128x38",
+      "game_element": "Every cage gate, both orientations",
+      "faces": "n/a",
+      "display": "sized along the opening, rotated for side doors"
     }
   ]
 }
