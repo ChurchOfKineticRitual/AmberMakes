@@ -51,6 +51,11 @@ SETTINGS goes at the very top of game.js. This is how Amber tweaks the game — 
 
 **Phaser rules:**
 - Phaser 4.1.0 — loaded via CDN in index.html, with local fallback at `../../_templates/game-template/lib/phaser.min.js`
+- **Version drift, unresolved (05Sep26s):** the local fallback file is 4.1.0, but
+  `ferret-shop` and `example-platformer` still pin `phaser@3.90.0` on the CDN.
+  Those two therefore work online and break offline, which is the one case the
+  fallback exists for. Fixing it means either migrating both games to Phaser 4
+  or keeping a second local 3.90.0 copy — ask Jordan which.
 - Arcade physics ONLY (not Matter.js) — simpler, fewer things to break
 - Single scene. Don't use multi-scene unless she specifically needs it.
 - Config: `{ type: Phaser.AUTO, width: 800, height: 600, backgroundColor: '#1a1a2e', physics: { default: 'arcade', arcade: { gravity: { y: SETTINGS.gravity }, debug: false } }, scene: { preload, create, update } }`
@@ -82,12 +87,101 @@ For the full model — when to use `/compact` vs `/clear`, what counts as worth 
 ## Making Sprites
 
 When Amber wants a sprite:
-1. Generate it via WaveSpeed (Nano Banana 2 model)
-2. Try to import to Eagle (if running) for visual browsing
-3. Copy to the current game's sprites/ folder
-4. Update game.js to use it
+1. Generate it via WaveSpeed (Nano Banana 2) on a **magenta** background
+2. Key out the magenta, trim and resize with ImageMagick
+3. Import to Eagle (if running, and if the Amber library is the open one)
+4. Copy to the current game's sprites/ folder and wire it into game.js
 
-Prompt pattern for clean game sprites: "2D game sprite, [description], isolated on solid white background, clean edges, pixel art style, no shadow"
+Prompt pattern:
+
+    "2D top-down game sprite, [character] seen from directly above,
+     [description], facing downward, isolated on solid magenta #FF00FF
+     background, clean edges, flat cartoon style, no shadow"
+
+Keying pipeline:
+
+    magick in-raw.png -fuzz 20% -transparent magenta -trim +repage \
+      -resize 128x128 -resize 64x64 -background none -alpha set out.png
+
+Resizing twice (to 2x the target, then down) keeps the edges sharp.
+
+**Magenta, not white.** White backgrounds bleed into the transparency and leave
+a pale halo. Magenta appears nowhere in the artwork, so a 20% fuzz key is safe.
+
+**NB2 quirks:**
+- It picks its own aspect ratio from the prompt and ignores the size you ask
+  for. Square-sounding prompts come back 1024x1024, wide ones 1408x768. Always
+  resize afterwards.
+- The safety filter rejects some ordinary words. Known: "ferret" (use
+  "weasel"), "parrot" (use "budgie"), "medieval key" (use "cartoon key"),
+  "squinting suspiciously" (use "looking around carefully").
+- It decides which way a character faces, whatever the prompt asks for. Check
+  each finished sprite and record its facing (see below) rather than assuming.
+- Cost is about 6c an image. Check the balance before a big batch:
+  `curl -H "Authorization: Bearer $(cat ~/.config/wavespeed/api_key)" \
+   https://api.wavespeed.ai/api/v3/balance`
+
+---
+
+## Swapping a Rectangle for a Sprite
+
+Games start as coloured rectangles, so most sprite work means replacing a
+Rectangle with an Image. They are different objects and three things change.
+All three have caused bugs in this repo already.
+
+**1. Scale is not 1 after setDisplaySize().**
+`setDisplaySize(w, h)` does not resize the image, it writes `scaleX`/`scaleY`.
+So a tween that animates to a literal `1.2` snaps the sprite to 1.2x its *file*
+size, not 1.2x its on-screen size. This is what made the treats enormous on the
+first attempt. Use the `fitSprite()` helper in ferret-shop/game.js, which stores
+`baseScaleX`/`baseScaleY` on the object, and multiply those in tweens:
+
+    scaleX: obj.baseScaleX * 1.2      // not: scaleX: 1.2
+
+**2. Rectangles have fillColor, Images have tint.**
+`obj.fillColor = 0xff0000` on an Image does nothing at all, silently — JS is
+happy to set an unknown property. Use `obj.setTint(0xff0000)` and
+`obj.clearTint()`.
+
+**3. body.setSize() multiplies by the sprite's scale.**
+Passing a logical size to `body.setSize(12, 12)` on a sprite scaled down from a
+64px texture gives a 4px collision box, and the character walks through walls.
+Either leave the body alone (it defaults to the on-screen size, usually what you
+want) or divide by the scale first.
+
+---
+
+## Sprite Rotation (top-down games)
+
+Phaser's `atan2` returns 0 for EAST, so artwork has to be rotated onto that:
+
+- Sprite drawn facing **UP** -> add `+Math.PI / 2`
+- Sprite drawn facing **DOWN** -> add `-Math.PI / 2`
+
+Because NB2 chooses the facing, record it per sprite rather than assuming a
+convention. Ferret Shop keeps a `faces` field on each entry in `ANIMAL_TYPES`
+and derives the offset with `facingOffset()`. Apply the offset at *every* place
+that sets rotation — miss one and the character moonwalks in that state.
+
+Current facings: ferret up; granny (all 4 states) down; mouse down; cat down;
+hamster, rabbit, budgie, turtle up.
+
+---
+
+## Sound
+
+- Kenney CC0 sounds live in `starter-pack/sounds/`. Copy them into the game's
+  own `sounds/` folder before using them.
+- **Ship both .ogg and .mp3.** Safari will not play ogg, and Safari is in
+  Amber's dock. Give Phaser both and it picks one:
+  `this.load.audio('sfx-treat', ['sounds/x.ogg', 'sounds/x.mp3']);`
+  Convert with `ffmpeg -i in.ogg -codec:a libmp3lame -qscale:a 5 out.mp3`.
+- Browsers keep audio locked until the player presses a key. Phaser unlocks it
+  on the first input by itself — nothing to do, but it does mean sound cannot be
+  tested without simulating a real key press.
+- Put `soundOn` and `soundVolume` in the SETTINGS block so Amber can change them
+  the same way she changes everything else, and route every sound through one
+  `playSfx()` helper so those settings actually apply.
 
 ---
 
