@@ -101,24 +101,50 @@ this.physics.add.collider(coins, platforms);
 this.physics.add.overlap(player, coins, collectCoin, null, this);
 
 function collectCoin(player, coin) {
-    coin.disableBody(true, true); // remove from physics + hide
+    // Rectangles are not Arcade Sprites — see the warning below
+    coin.body.enable = false;
+    coin.setActive(false).setVisible(false);
     score += 10;
     scoreText.setText('Score: ' + score);
 
     // When all coins collected, respawn them + add danger
     if (coins.countActive(true) === 0) {
-        coins.children.iterate(function (child) {
-            child.enableBody(true, child.x, 0, true, true);
+        coins.getChildren().forEach(function (child) {
+            child.setActive(true).setVisible(true);
+            child.body.enable = true;
+            child.body.reset(child.x, 0);
         });
         spawnEnemy(); // increase difficulty
     }
 }
 ```
 
-### disableBody vs destroy
+### Hiding a collectible, and bringing it back
 
-- `disableBody(true, true)` — removes from physics and hides, but keeps the object alive for re-enabling later
-- `destroy()` — permanently removes the object. Use for one-off things like explosions.
+`disableBody()` and `enableBody()` belong to Arcade **Sprite** and **Image**. A
+`this.add.rectangle()` put into a physics group does get a *body*, but it is
+still a Rectangle: those two methods are not on it, and calling one throws
+`disableBody is not a function`. Because that throw happens inside an overlap
+callback it kills the game loop, while the canvas keeps showing the last frame
+— so it looks like a freeze, not an error. Every game here starts as coloured
+rectangles, so this is the normal case, not the edge case. Do it by hand:
+
+```javascript
+// hide it
+coin.body.enable = false;
+coin.setActive(false).setVisible(false);
+
+// bring it back
+coin.setActive(true).setVisible(true);
+coin.body.enable = true;
+coin.body.reset(x, y);
+```
+
+`coins.countActive(true)` still works, because it counts the `active` flag you
+just set.
+
+Use `destroy()` instead when the object is never coming back (an explosion, a
+one-off pickup). A destroyed object cannot be re-enabled.
 
 ---
 
@@ -170,7 +196,7 @@ function createPatroller(scene, x, y, minX, maxX) {
 }
 
 // In update() — reverse direction at patrol bounds
-enemies.children.iterate(function (e) {
+enemies.getChildren().forEach(function (e) {
     if (e.active && e.patrolMin !== undefined) {
         if (e.x <= e.patrolMin) e.body.setVelocityX(SETTINGS.enemySpeed);
         if (e.x >= e.patrolMax) e.body.setVelocityX(-SETTINGS.enemySpeed);
@@ -369,7 +395,7 @@ function update() {
     }
 
     // Clean up platforms behind camera
-    platforms.children.iterate(function (p) {
+    platforms.getChildren().slice().forEach(function (p) {
         if (p && p.x < this.cameras.main.scrollX - 200) {
             platforms.remove(p, true, true);
         }
@@ -451,6 +477,12 @@ const SETTINGS = {
 2. **Jump check: `player.body.touching.down`** — not `player.body.onFloor()` which only checks world bounds, not platform collisions.
 3. **Negative Y = up** — `jumpPower` should be negative (e.g. -450). Gravity pulls down (positive Y).
 4. **`collider` vs `overlap`** — collider makes objects bounce off each other. Overlap detects intersection without physical response. Use overlap for collectibles and damage zones.
-5. **Group children iteration** — use `group.children.iterate()` not `group.forEach()`. The iterate method is Phaser's safe iterator that handles removals during iteration.
+5. **Group children iteration** — use `group.getChildren().forEach()`. Do **not** use
+   `group.children.iterate()`: in Phaser 3 `group.children` is a `Phaser.Structs.Set`,
+   which has `.iterate()`, but that class does not exist in Phaser 4 — the call throws
+   `is not a function`, and because it throws inside `update()` it kills the game loop
+   dead while the canvas keeps showing the last frame. `getChildren()` exists in both
+   versions. If the callback removes children as it goes, iterate over a snapshot:
+   `group.getChildren().slice().forEach()`.
 6. **Score reset on restart** — `scene.restart()` re-runs `create()` but doesn't reset variables declared outside functions. Reset `score = 0` and `gameOver = false` before calling restart.
 7. **Static body size** — `setScale()` on a static body visual doesn't resize the physics body. Call `.refreshBody()` after scaling sprites, or `updateFromGameObject()` after sizing rectangles.

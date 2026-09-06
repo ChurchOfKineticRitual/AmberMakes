@@ -925,7 +925,7 @@ function updateCageAnimals(scene) {
 }
 
 function updateReleasedAnimals(scene) {
-    releasedAnimals.children.iterate(animal => {
+    releasedAnimals.getChildren().forEach(animal => {
         if (!animal || !animal.active) return;
 
         // Chase granny!
@@ -951,7 +951,7 @@ function updateGranny(scene) {
             granny.setTexture('granny-panic');
             let nearestAnimal = null;
             let nearestDist = Infinity;
-            releasedAnimals.children.iterate(animal => {
+            releasedAnimals.getChildren().forEach(animal => {
                 if (!animal || !animal.active) return;
                 const d = Phaser.Math.Distance.Between(granny.x, granny.y, animal.x, animal.y);
                 if (d < nearestDist) { nearestDist = d; nearestAnimal = animal; }
@@ -982,7 +982,7 @@ function updateGranny(scene) {
         // Find nearest active released animal
         let target = null;
         let targetDist = Infinity;
-        releasedAnimals.children.iterate(animal => {
+        releasedAnimals.getChildren().forEach(animal => {
             if (!animal || !animal.active) return;
             const d = Phaser.Math.Distance.Between(granny.x, granny.y, animal.x, animal.y);
             if (d < targetDist) { targetDist = d; target = animal; }

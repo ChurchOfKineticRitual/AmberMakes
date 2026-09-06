@@ -132,7 +132,7 @@ function update() {
     }
 
     // Patrol enemies — reverse at bounds
-    enemies.children.iterate(function (e) {
+    enemies.getChildren().forEach(function (e) {
         if (e && e.active && e.patrolMin !== undefined) {
             if (e.x <= e.patrolMin) e.body.setVelocityX(SETTINGS.enemySpeed);
             if (e.x >= e.patrolMax) e.body.setVelocityX(-SETTINGS.enemySpeed);
@@ -191,14 +191,20 @@ function createPatroller(scene, x, y, minX, maxX) {
 }
 
 function collectCoin(player, coin) {
-    coin.disableBody(true, true);
+    // A Rectangle in a physics group has a body, but it is not an Arcade
+    // Sprite — disableBody()/enableBody() do not exist on it. Do it by hand.
+    coin.body.enable = false;
+    coin.setActive(false).setVisible(false);
+
     score += SETTINGS.coinPoints;
     scoreText.setText('Score: ' + score);
 
     // All coins collected — respawn them
     if (coins.countActive(true) === 0) {
-        coins.children.iterate(function (child) {
-            child.enableBody(true, child.x, child.y - 30, true, true);
+        coins.getChildren().forEach(function (child) {
+            child.setActive(true).setVisible(true);
+            child.body.enable = true;
+            child.body.reset(child.x, child.y - 30);
         });
     }
 }
