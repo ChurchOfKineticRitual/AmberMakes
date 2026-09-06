@@ -51,11 +51,17 @@ SETTINGS goes at the very top of game.js. This is how Amber tweaks the game — 
 
 **Phaser rules:**
 - Phaser 4.1.0 — loaded via CDN in index.html, with local fallback at `../../_templates/game-template/lib/phaser.min.js`
-- **Version drift, unresolved (05Sep26s):** the local fallback file is 4.1.0, but
-  `ferret-shop` and `example-platformer` still pin `phaser@3.90.0` on the CDN.
-  Those two therefore work online and break offline, which is the one case the
-  fallback exists for. Fixing it means either migrating both games to Phaser 4
-  or keeping a second local 3.90.0 copy — ask Jordan which.
+- **Version drift, still Jordan's call (measured 06Sep26u):** the local fallback
+  file is 4.1.0, but `ferret-shop` and `example-platformer` still pin
+  `phaser@3.90.0` on the CDN, so those two load one Phaser online and a
+  different one offline. Both games have since been made version-agnostic and
+  verified running identically on 3.90.0 and 4.1.0 across every major code path,
+  so the only open question is which version they should target: bump both pins
+  to 4.1.0 and match the rest of the repo, or keep a second local 3.90.0 copy.
+  Ask Jordan, do not guess.
+- **Do not use `group.children.iterate()`.** It is Phaser 3 only and throws in
+  Phaser 4. Use `group.getChildren().forEach()`, which works in both. Full
+  explanation in `_reference/phaser-patterns.md`, rule 5.
 - Arcade physics ONLY (not Matter.js) — simpler, fewer things to break
 - Single scene. Don't use multi-scene unless she specifically needs it.
 - Config: `{ type: Phaser.AUTO, width: 800, height: 600, backgroundColor: '#1a1a2e', physics: { default: 'arcade', arcade: { gravity: { y: SETTINGS.gravity }, debug: false } }, scene: { preload, create, update } }`
@@ -148,6 +154,45 @@ Passing a logical size to `body.setSize(12, 12)` on a sprite scaled down from a
 64px texture gives a 4px collision box, and the character walks through walls.
 Either leave the body alone (it defaults to the on-screen size, usually what you
 want) or divide by the scale first.
+
+---
+
+## Rectangles in physics groups
+
+A `this.add.rectangle()` added to a physics group gets a *body*, but it is still
+a Rectangle, not an Arcade Sprite. Methods that live on Arcade Sprite and Image
+are simply absent from it, and calling one throws.
+
+The one that has actually bitten: **`disableBody()` and `enableBody()`**. Hiding
+and restoring a collectible has to be done by hand:
+
+    // hide it
+    coin.body.enable = false;
+    coin.setActive(false).setVisible(false);
+
+    // bring it back
+    coin.setActive(true).setVisible(true);
+    coin.body.enable = true;
+    coin.body.reset(x, y);
+
+`countActive(true)` still works, because it reads the `active` flag you just set.
+
+Since every game here starts as coloured rectangles, this is the normal case
+rather than an edge case. It froze example-platformer's coin collection on
+*both* Phaser versions until 06Sep26u.
+
+---
+
+## A frozen game is usually a throw, not a hang
+
+An uncaught error inside `update()`, or inside a collider/overlap callback,
+stops Phaser's game loop — but the canvas keeps showing its last rendered
+frame. So the symptom is a still picture, not an error screen, and a screenshot
+of it looks perfectly healthy.
+
+Check the browser console first. If you are testing programmatically, watch
+`game.loop.frame` across a few seconds: a number that stops advancing is the
+honest signal, and the pixels are not.
 
 ---
 
