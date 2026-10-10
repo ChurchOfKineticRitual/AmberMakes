@@ -39,7 +39,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 button.primary { background: var(--accent); color: #1a1027; border-color: var(--accent); font-weight: 600; }
 button.tool { display: inline-flex; align-items: center; gap: 8px; }
 button.tool[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; }
+.swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; outline: 1px solid rgba(255, 255, 255, 0.3); }
 .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .opts { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; color: var(--muted); }
 .opts label { display: inline-flex; align-items: center; gap: 6px; }
@@ -147,7 +147,8 @@ const DRAFT_KEY = 'haunted-hop-draft';
 const TOOLS = [
     { id: 'platform', name: 'Platform', colour: SETTINGS.platformColour, help: '<b>Drag</b> sideways to draw a floating platform. Click for a standard one.' },
     { id: 'ground', name: 'Ground', colour: SETTINGS.groundColour, help: '<b>Drag</b> along the bottom to add ground. Gaps between ground are pits.' },
-    { id: 'candy', name: 'Candy', colour: SETTINGS.candyColour, help: '<b>Drag</b> to lay a row of candy. Tick Arc candy for a curved row. Platforms get candy on their own.' },
+    { id: 'candy', name: 'Candy', colour: SETTINGS.candyColour, help: '<b>Drag</b> to lay a row of candy. Tick Arc candy for a curved row.' },
+    { id: 'pit', name: 'Pit', colour: 0x000000, help: '<b>Drag</b> along the ground to cut a gap you can fall down. Click for a 6-square pit.' },
     { id: 'pumpkin', name: 'Pumpkin', colour: SETTINGS.pumpkinColour, help: '<b>Drag</b> on the ground or a platform to set where a pumpkin walks.' },
     { id: 'bat', name: 'Bat', colour: SETTINGS.batColour, help: '<b>Drag</b> in the sky to set where a bat flies back and forth.' },
     { id: 'grave', name: 'Gravestone', colour: SETTINGS.gravestoneColour, help: '<b>Click</b> to place a gravestone. Just scenery.' },
@@ -304,14 +305,20 @@ function draw() {
     rect(hx - 25, GT - 80, 50, 80, SETTINGS.doorColour);
 
     level.ground.forEach(g => rect(g.from, GT, g.to - g.from, 32, SETTINGS.groundColour));
+    // Mark the pits so they are easy to spot
+    const sortedGround = level.ground.slice().sort((a, b) => a.from - b.from);
+    let edge = 0;
+    ctx.font = '13px IBM Plex Mono, monospace';
+    sortedGround.concat([{ from: W, to: W }]).forEach(g => {
+        if (g.from > edge) {
+            rect(edge, GT, g.from - edge, 32, '#ff5e7a', 0.18);
+            ctx.fillStyle = 'rgba(255,94,122,0.8)';
+            ctx.fillText('PIT', (edge + g.from) / 2 - 12, GT + 21);
+        }
+        edge = Math.max(edge, g.to);
+    });
     level.platforms.forEach(p => {
         rect(p.x - p.width / 2, p.y - 8, p.width, 16, SETTINGS.platformColour);
-        // The candy the game adds on its own, shown faded
-        const count = Math.floor(p.width / 40);
-        for (let i = 0; i < count; i++) {
-            const cx = p.x - (count - 1) * 16 + i * 32;
-            rect(cx - 7, p.y - 37, 14, 14, SETTINGS.candyColour, 0.4);
-        }
     });
 
     level.candyRows.forEach(r => candyPositions(r).forEach(c => rect(c.x - 7, c.y - 7, 14, 14, SETTINGS.candyColour)));
@@ -415,6 +422,10 @@ function previewItem() {
         const [a, b] = span(100);
         return { x: a, y: GT, w: b - a, h: 32 };
     }
+    if (tool === 'pit') {
+        const [a, b] = span(60);
+        return { x: a, y: GT, w: b - a, h: 32 };
+    }
     if (tool === 'candy') {
         const [a, b] = span(0);
         return { x: a - 7, y: drag.y0 - 7, w: Math.max(b - a, 0) + 14, h: 14 };
@@ -443,6 +454,11 @@ function buildItem() {
     if (tool === 'ground') {
         const [a, b] = span(100);
         return () => addGround(a, b);
+    }
+    if (tool === 'pit') {
+        const [a, b] = span(60);
+        if (!level.ground.some(g => g.to > a && g.from < b)) { say('There is no ground there to cut.'); return null; }
+        return () => cutGround(a, b);
     }
     if (tool === 'candy') {
         const [a, b] = span(0);
@@ -484,6 +500,17 @@ function addGround(a, b) {
     level.ground.sort((x, y) => x.from - y.from);
 }
 
+// Removes the ground between a and b, leaving a pit
+function cutGround(a, b) {
+    const out = [];
+    level.ground.forEach(g => {
+        if (g.to <= a || g.from >= b) { out.push(g); return; }
+        if (a - g.from >= 20) out.push({ from: g.from, to: a });
+        if (g.to - b >= 20) out.push({ from: b, to: g.to });
+    });
+    level.ground = out;
+}
+
 function erase(p) {
     const hit = (x, y, w, h) => p.x >= x - 6 && p.x <= x + w + 6 && p.y >= y - 6 && p.y <= y + h + 6;
     const ps = SETTINGS.pumpkinSize, bs = SETTINGS.batSize;
@@ -502,11 +529,7 @@ function erase(p) {
     const gi = level.ground.findIndex(g => hit(g.from, GT, g.to - g.from, 32));
     if (gi !== -1) {
         const x = snap(p.x);
-        change(() => {
-            const g = level.ground[gi];
-            const parts = [{ from: g.from, to: x - 60 }, { from: x + 60, to: g.to }].filter(s => s.to - s.from >= 40);
-            level.ground.splice(gi, 1, ...parts);
-        });
+        change(() => cutGround(x - 60, x + 60));
     }
 }
 

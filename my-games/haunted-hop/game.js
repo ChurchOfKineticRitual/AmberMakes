@@ -72,8 +72,17 @@ const LEVEL = {
         { x: 2660, y: 360, width: 120 },
         { x: 2860, y: 270, width: 100 }
     ],
-    // Extra candy (platforms get candy automatically)
     candyRows: [
+        { x: 318, y: 440, count: 3 },
+        { x: 528, y: 340, count: 3 },
+        { x: 968, y: 430, count: 3 },
+        { x: 1188, y: 320, count: 3 },
+        { x: 1688, y: 430, count: 3 },
+        { x: 1888, y: 330, count: 3 },
+        { x: 2094, y: 220, count: 2 },
+        { x: 2418, y: 430, count: 3 },
+        { x: 2628, y: 330, count: 3 },
+        { x: 2844, y: 240, count: 2 },
         { x: 150, y: 540, count: 4 },
         { x: 690, y: 480, count: 4, arc: true },
         { x: 1100, y: 540, count: 3 },
@@ -208,10 +217,6 @@ function create() {
 
     // --- Candy ---
     candies = this.physics.add.group();
-    LEVEL.platforms.forEach(p => {
-        const count = Math.floor(p.width / 40);
-        addCandyRow(this, p.x - (count - 1) * 16, p.y - 30, count, false);
-    });
     LEVEL.candyRows.forEach(r => addCandyRow(this, r.x, r.y, r.count, r.arc));
 
     // --- Enemies ---
