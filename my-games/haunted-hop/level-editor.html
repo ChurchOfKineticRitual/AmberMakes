@@ -44,7 +44,14 @@ button.tool[aria-pressed="true"] { border-color: var(--accent); box-shadow: inse
 .opts { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; color: var(--muted); }
 .opts label { display: inline-flex; align-items: center; gap: 6px; }
 input[type="range"] { width: 140px; accent-color: var(--accent); }
-.strip { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #140a1f; }
+.strip { overflow-x: scroll; border: 1px solid var(--line); border-radius: 8px; background: #140a1f; scrollbar-color: var(--muted) var(--panel); }
+.strip::-webkit-scrollbar { height: 12px; }
+.strip::-webkit-scrollbar-track { background: var(--panel); }
+.strip::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 6px; border: 3px solid var(--panel); }
+.nav { display: flex; align-items: center; gap: 8px; }
+.nav canvas { flex: 1; min-width: 0; height: 56px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; touch-action: none; display: block; }
+.nav button { padding: 7px 14px; }
+.where { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 15ch; }
 .strip canvas { display: block; touch-action: none; }
 .help { color: var(--muted); margin: 0; min-height: 1.5em; }
 .help b { color: var(--fg); font-weight: 600; }
@@ -88,6 +95,13 @@ pre { margin: 0; padding: 12px; overflow-x: auto; font-size: 12px; border-top: 1
 
     <div class="strip" id="strip"><canvas id="cv"></canvas></div>
 
+    <div class="nav">
+        <button id="left" type="button" aria-label="Scroll left">◀</button>
+        <canvas id="mini" aria-label="Whole level. Click or drag to jump there."></canvas>
+        <button id="right" type="button" aria-label="Scroll right">▶</button>
+    </div>
+    <p class="help">Move around: drag the map above, use the ◀ ▶ buttons, scroll the mouse wheel over the level, or press the arrow keys. <span class="where" id="where"></span></p>
+
     <ul class="warn" id="warn"></ul>
     <p class="status" id="status" role="status"></p>
 
@@ -122,8 +136,8 @@ pre { margin: 0; padding: 12px; overflow-x: auto; font-size: 12px; border-top: 1
 // ===== LEVEL EDITOR =====
 // game.js has already run: SETTINGS, LEVEL and game exist.
 
-const SCALE = 0.6;          // how big the level is drawn
-const SNAP = 10;            // everything snaps to a 10px grid
+const SCALE = 0.75;         // how big the level is drawn
+const GRID = 20;            // one grid square = 20px in the game
 const H = SETTINGS.gameHeight;
 const GT = H - 32;          // top of the ground
 const START_X = 80;
@@ -146,6 +160,7 @@ let tool = 'platform';
 let history = [];
 let drag = null;
 let touched = false;
+let hover = null;
 
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
@@ -153,7 +168,9 @@ const $ = id => document.getElementById(id);
 
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
 function hex(n) { return '#' + n.toString(16).padStart(6, '0'); }
-function snap(v) { return Math.round(v / SNAP) * SNAP; }
+function snap(v) { return Math.round(v / GRID) * GRID; }
+// Rows are counted up from the top of the ground, so platforms sit on grid lines
+function snapY(v) { return GT - Math.round((GT - v) / GRID) * GRID; }
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
 // ----- Tool buttons -----
@@ -243,7 +260,8 @@ function candyPositions(r) {
 
 function draw() {
     const W = level.width;
-    cv.width = Math.round(W * SCALE * devicePixelRatio);
+    const pw = Math.round(W * SCALE * devicePixelRatio);
+    if (cv.width !== pw) cv.width = pw;
     cv.height = Math.round(H * SCALE * devicePixelRatio);
     cv.style.width = Math.round(W * SCALE) + 'px';
     cv.style.height = Math.round(H * SCALE) + 'px';
@@ -251,14 +269,19 @@ function draw() {
 
     rect(0, 0, W, H, SETTINGS.backgroundColour);
 
-    // Grid: a faint line every 100px, labelled every 400px
-    ctx.font = '14px IBM Plex Mono, monospace';
-    for (let x = 0; x <= W; x += 100) {
-        rect(x, 0, 1, H, '#ffffff', x % 400 === 0 ? 0.12 : 0.05);
-        if (x % 400 === 0) {
-            ctx.fillStyle = 'rgba(255,255,255,0.35)';
-            ctx.fillText(x, x + 4, 16);
-        }
+    // Grid: a square every 20px, a brighter line every 5 squares
+    ctx.font = '13px IBM Plex Mono, monospace';
+    for (let x = 0; x <= W; x += GRID) {
+        rect(x, 0, 1, GT, '#ffffff', x % 100 === 0 ? 0.13 : 0.05);
+    }
+    for (let k = 0; GT - k * GRID >= 0; k++) {
+        const y = GT - k * GRID;
+        rect(0, y, W, 1, '#ffffff', k % 5 === 0 ? 0.13 : 0.05);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    for (let x = 0; x < W; x += 200) ctx.fillText(x, x + 4, 14);
+    for (let k = 5; GT - k * GRID > 20; k += 5) {
+        for (let x = 0; x < W; x += 800) ctx.fillText(k, x + 4, GT - k * GRID - 4);
     }
 
     // Single-jump reach above the ground
@@ -316,6 +339,12 @@ function draw() {
     ctx.fillText('START', START_X - 22, GT - s - 8);
 
     if (drag) drawPreview();
+    else if (hover && tool !== 'erase') {
+        ctx.strokeStyle = 'rgba(255,204,51,0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(snap(hover.x) - GRID / 2, snapY(hover.y) - GRID / 2, GRID, GRID);
+    }
+    drawMini();
 }
 
 function drawPreview() {
@@ -345,17 +374,21 @@ cv.addEventListener('pointerdown', e => {
         return;
     }
     cv.setPointerCapture(e.pointerId);
-    drag = { x0: snap(p.x), y0: snap(p.y), x1: snap(p.x), y1: snap(p.y) };
+    drag = { x0: snap(p.x), y0: snapY(p.y), x1: snap(p.x), y1: snapY(p.y) };
     draw();
 });
 
 cv.addEventListener('pointermove', e => {
-    if (!drag) return;
     const p = worldPos(e);
+    hover = p;
+    $('where').textContent = 'x ' + snap(p.x) + ' · ' + Math.round((GT - snapY(p.y)) / GRID) + ' squares up';
+    if (!drag) { draw(); return; }
     drag.x1 = snap(clamp(p.x, 0, level.width));
-    drag.y1 = snap(p.y);
+    drag.y1 = snapY(p.y);
     draw();
 });
+
+cv.addEventListener('pointerleave', () => { hover = null; $('where').textContent = ''; if (!drag) draw(); });
 
 cv.addEventListener('pointerup', () => {
     if (!drag) return;
@@ -376,7 +409,7 @@ function span(defaultHalf) {
 function previewItem() {
     if (tool === 'platform') {
         const [a, b] = span(60);
-        return { x: a, y: clamp(drag.y0, 60, GT - 40) - 8, w: b - a, h: 16 };
+        return { x: a, y: clamp(drag.y0, GT - 25 * GRID, GT - 2 * GRID), w: b - a, h: 16 };
     }
     if (tool === 'ground') {
         const [a, b] = span(100);
@@ -404,7 +437,7 @@ function buildItem() {
     if (tool === 'platform') {
         const [a, b] = span(60);
         const width = Math.max(40, b - a);
-        const y = clamp(drag.y0, 60, GT - 40);
+        const y = clamp(drag.y0, GT - 25 * GRID, GT - 2 * GRID) + 8; // top of the platform sits on the grid line
         return () => level.platforms.push({ x: a + width / 2, y, width });
     }
     if (tool === 'ground') {
@@ -432,7 +465,8 @@ function buildItem() {
     }
     if (tool === 'bat') {
         const [a, b] = span(150);
-        return () => level.bats.push({ from: a, to: b, y: clamp(drag.y0, 40, GT - 80) });
+        const bat = { from: a, to: b, y: clamp(drag.y0, 40, GT - 80) };
+        return () => level.bats.push(bat);
     }
     return null;
 }
@@ -526,6 +560,64 @@ function say(text) {
     clearTimeout(sayTimer);
     sayTimer = setTimeout(() => $('status').textContent = '', 6000);
 }
+
+// ----- Moving around the level -----
+const strip = $('strip');
+const mini = $('mini');
+const mctx = mini.getContext('2d');
+
+function drawMini() {
+    const w = mini.clientWidth, h = mini.clientHeight;
+    if (!w) return;
+    const dpr = devicePixelRatio;
+    if (mini.width !== Math.round(w * dpr)) mini.width = Math.round(w * dpr);
+    if (mini.height !== Math.round(h * dpr)) mini.height = Math.round(h * dpr);
+    const sx = w / level.width, sy = h / H;
+    mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const box = (x, y, bw, bh, c) => { mctx.fillStyle = typeof c === 'number' ? hex(c) : c; mctx.fillRect(x * sx, y * sy, Math.max(bw * sx, 2), Math.max(bh * sy, 2)); };
+    box(0, 0, level.width, H, SETTINGS.backgroundColour);
+    level.ground.forEach(g => box(g.from, GT, g.to - g.from, 32, 0x5a4470));
+    level.platforms.forEach(p => box(p.x - p.width / 2, p.y - 8, p.width, 16, 0x7a5a96));
+    box(level.houseX - 25, GT - 80, 50, 80, SETTINGS.doorColour);
+    level.pumpkins.forEach(q => box(q.from - 14, (q.y || GT) - 28, 28, 28, SETTINGS.pumpkinColour));
+    level.bats.forEach(b => box(b.from - 11, b.y - 11, 22, 22, SETTINGS.batColour));
+    box(START_X - 15, GT - 30, 30, 30, SETTINGS.playerColour);
+    // The part you can see right now
+    const vx = strip.scrollLeft / SCALE, vw = strip.clientWidth / SCALE;
+    mctx.strokeStyle = '#ffcc33';
+    mctx.lineWidth = 2;
+    mctx.strokeRect(vx * sx + 1, 1, Math.min(vw, level.width) * sx - 2, h - 2);
+}
+
+function jumpTo(e) {
+    const r = mini.getBoundingClientRect();
+    const worldX = (e.clientX - r.left) / r.width * level.width;
+    strip.scrollLeft = worldX * SCALE - strip.clientWidth / 2;
+}
+let miniDrag = false;
+mini.addEventListener('pointerdown', e => { miniDrag = true; mini.setPointerCapture(e.pointerId); jumpTo(e); });
+mini.addEventListener('pointermove', e => { if (miniDrag) jumpTo(e); });
+mini.addEventListener('pointerup', () => { miniDrag = false; });
+
+strip.addEventListener('scroll', drawMini);
+window.addEventListener('resize', drawMini);
+
+// Mouse wheel scrolls sideways
+strip.addEventListener('wheel', e => {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        strip.scrollLeft += e.deltaY;
+        e.preventDefault();
+    }
+}, { passive: false });
+
+function nudge(dir) { strip.scrollBy({ left: dir * strip.clientWidth * 0.7, behavior: 'smooth' }); }
+$('left').addEventListener('click', () => nudge(-1));
+$('right').addEventListener('click', () => nudge(1));
+document.addEventListener('keydown', e => {
+    if (!$('play').hidden || e.target.matches('input, textarea, select')) return;
+    if (e.key === 'ArrowLeft') { strip.scrollLeft -= 200; e.preventDefault(); }
+    if (e.key === 'ArrowRight') { strip.scrollLeft += 200; e.preventDefault(); }
+});
 
 // ----- Buttons -----
 $('undo').addEventListener('click', () => {
