@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- PAGE START -->
+<title>Haunted Hop Level Editor</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one dark workbench. Header with actions, a tool palette, the level as a long scrolling strip, then help and code. */
+:root {
+    --bg: #0d0716;
+    --panel: #1a1027;
+    --line: #34244a;
+    --fg: #ece5f7;
+    --muted: #9b8db3;
+    --accent: #ffcc33;
+    --danger: #ff5e7a;
+    --display: 'Pixelify Sans', 'Courier New', monospace;
+    --body: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--fg); }
+body { margin: 0; font: 14px/1.5 var(--body); padding-inline: 16px; padding-block: 16px 32px; }
+.wrap { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+h1 { font: 700 28px/1.1 var(--display); margin: 0; color: var(--accent); letter-spacing: 0.02em; text-wrap: balance; }
+h1 small { display: block; font: 400 13px/1.4 var(--body); color: var(--muted); letter-spacing: 0; }
+.actions, .tools { display: flex; flex-wrap: wrap; gap: 8px; }
+button, select, input { font: inherit; color: inherit; }
+button {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    padding: 7px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: #1a1027; border-color: var(--accent); font-weight: 600; }
+button.tool { display: inline-flex; align-items: center; gap: 8px; }
+button.tool[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.opts { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; color: var(--muted); }
+.opts label { display: inline-flex; align-items: center; gap: 6px; }
+input[type="range"] { width: 140px; accent-color: var(--accent); }
+.strip { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #140a1f; }
+.strip canvas { display: block; touch-action: none; }
+.help { color: var(--muted); margin: 0; min-height: 1.5em; }
+.help b { color: var(--fg); font-weight: 600; }
+.status { color: var(--accent); min-height: 1.5em; margin: 0; }
+.warn { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.warn li { color: var(--danger); }
+.warn li::before { content: '! '; font-weight: 600; }
+details { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+summary { cursor: pointer; padding: 8px 12px; color: var(--muted); }
+pre { margin: 0; padding: 12px; overflow-x: auto; font-size: 12px; border-top: 1px solid var(--line); user-select: all; }
+#play {
+    position: fixed; inset: 0; z-index: 50; background: rgba(5, 2, 10, 0.92);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+#game canvas { display: block; max-width: 100%; height: auto !important; }
+#game { max-width: 800px; width: 100%; }
+.playbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+    <header>
+        <h1>Haunted Hop Level Editor<small>Draw a level, play-test it, then save it for the game.</small></h1>
+        <div class="actions">
+            <button id="undo" type="button">Undo</button>
+            <button id="playBtn" class="primary" type="button">▶ Play test</button>
+            <button id="save" type="button">Save for Claude</button>
+        </div>
+    </header>
+
+    <div class="tools" id="tools" role="toolbar" aria-label="Tools"></div>
+
+    <div class="bar">
+        <p class="help" id="help"></p>
+        <div class="opts">
+            <label id="arcWrap"><input type="checkbox" id="arc"> Arc candy</label>
+            <label>Length <input type="range" id="width" min="1600" max="8000" step="400"> <span id="widthOut"></span></label>
+        </div>
+    </div>
+
+    <div class="strip" id="strip"><canvas id="cv"></canvas></div>
+
+    <ul class="warn" id="warn"></ul>
+    <p class="status" id="status" role="status"></p>
+
+    <div class="actions">
+        <button id="reset" type="button">Back to the original level</button>
+        <button id="clear" type="button">Start from empty</button>
+        <button id="copy" type="button">Copy level code</button>
+    </div>
+
+    <details>
+        <summary>Level code (what goes into game.js)</summary>
+        <pre id="code"></pre>
+    </details>
+</div>
+
+<div id="play" hidden>
+    <div id="game"></div>
+    <div class="playbar">
+        <span>ARROWS move · SPACE jump · ESC back</span>
+        <button id="back" type="button">Back to editing</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/phaser@4.1.0/dist/phaser.min.js"></script>
+<script>
+    if (typeof Phaser === 'undefined') {
+        document.write('<script src="lib/phaser.min.js"><\/script>');
+    }
+</script>
+<script src="game.js"></script>
+<script>
+// ===== LEVEL EDITOR =====
+// game.js has already run: SETTINGS, LEVEL and game exist.
+
+const SCALE = 0.6;          // how big the level is drawn
+const SNAP = 10;            // everything snaps to a 10px grid
+const H = SETTINGS.gameHeight;
+const GT = H - 32;          // top of the ground
+const START_X = 80;
+const ORIGINAL = clone(LEVEL);
+const DRAFT_KEY = 'haunted-hop-draft';
+
+const TOOLS = [
+    { id: 'platform', name: 'Platform', colour: SETTINGS.platformColour, help: '<b>Drag</b> sideways to draw a floating platform. Click for a standard one.' },
+    { id: 'ground', name: 'Ground', colour: SETTINGS.groundColour, help: '<b>Drag</b> along the bottom to add ground. Gaps between ground are pits.' },
+    { id: 'candy', name: 'Candy', colour: SETTINGS.candyColour, help: '<b>Drag</b> to lay a row of candy. Tick Arc candy for a curved row. Platforms get candy on their own.' },
+    { id: 'pumpkin', name: 'Pumpkin', colour: SETTINGS.pumpkinColour, help: '<b>Drag</b> on the ground or a platform to set where a pumpkin walks.' },
+    { id: 'bat', name: 'Bat', colour: SETTINGS.batColour, help: '<b>Drag</b> in the sky to set where a bat flies back and forth.' },
+    { id: 'grave', name: 'Gravestone', colour: SETTINGS.gravestoneColour, help: '<b>Click</b> to place a gravestone. Just scenery.' },
+    { id: 'house', name: 'Haunted house', colour: SETTINGS.doorColour, help: '<b>Click</b> to move the haunted house. Its door is the finish line.' },
+    { id: 'erase', name: 'Eraser', colour: 0xff5e7a, help: '<b>Click</b> anything to remove it.' }
+];
+
+let level = clone(LEVEL);
+let tool = 'platform';
+let history = [];
+let drag = null;
+let touched = false;
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function hex(n) { return '#' + n.toString(16).padStart(6, '0'); }
+function snap(v) { return Math.round(v / SNAP) * SNAP; }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+// ----- Tool buttons -----
+TOOLS.forEach(t => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tool';
+    b.id = 'tool-' + t.id;
+    b.innerHTML = '<span class="swatch" style="background:' + hex(t.colour) + '"></span>' + t.name;
+    b.addEventListener('click', () => setTool(t.id));
+    $('tools').appendChild(b);
+});
+
+function setTool(id) {
+    tool = id;
+    TOOLS.forEach(t => $('tool-' + t.id).setAttribute('aria-pressed', t.id === id));
+    $('help').innerHTML = TOOLS.find(t => t.id === id).help;
+    $('arcWrap').hidden = id !== 'candy';
+}
+
+// ----- Changes and history -----
+function change(fn) {
+    history.push(clone(level));
+    if (history.length > 100) history.shift();
+    fn();
+    touched = true;
+    saveDraft();
+    refresh();
+}
+
+function saveDraft() {
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(level)); } catch (e) {}
+}
+
+function loadLevel(l) {
+    level = clone(l);
+    if (!level.width) level.width = 3200;
+    ['ground', 'platforms', 'candyRows', 'pumpkins', 'bats', 'gravestones'].forEach(k => {
+        if (!Array.isArray(level[k])) level[k] = [];
+    });
+    if (typeof level.houseX !== 'number') level.houseX = level.width - 200;
+}
+
+// ----- Surfaces (what pumpkins can stand on) -----
+function surfaces() {
+    const list = level.ground.map(g => ({ left: g.from, right: g.to, top: GT, ground: true }));
+    level.platforms.forEach(p => list.push({ left: p.x - p.width / 2, right: p.x + p.width / 2, top: p.y - 8 }));
+    return list;
+}
+
+function surfaceAt(x, y) {
+    // The first surface at or below the pointer
+    return surfaces()
+        .filter(s => x >= s.left && x <= s.right && s.top >= y - 20)
+        .sort((a, b) => a.top - b.top)[0];
+}
+
+// ----- Drawing -----
+function rect(x, y, w, h, colour, alpha) {
+    ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+    ctx.fillStyle = typeof colour === 'number' ? hex(colour) : colour;
+    ctx.fillRect(x, y, w, h);
+    ctx.globalAlpha = 1;
+}
+
+function patrolLine(from, to, y, colour) {
+    ctx.strokeStyle = hex(colour);
+    ctx.globalAlpha = 0.6;
+    ctx.setLineDash([6, 6]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(from, y);
+    ctx.lineTo(to, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+}
+
+function candyPositions(r) {
+    const out = [];
+    for (let i = 0; i < r.count; i++) {
+        const lift = (r.arc && r.count > 1) ? Math.sin(Math.PI * i / (r.count - 1)) * 40 : 0;
+        out.push({ x: r.x + i * 32, y: r.y - lift });
+    }
+    return out;
+}
+
+function draw() {
+    const W = level.width;
+    cv.width = Math.round(W * SCALE * devicePixelRatio);
+    cv.height = Math.round(H * SCALE * devicePixelRatio);
+    cv.style.width = Math.round(W * SCALE) + 'px';
+    cv.style.height = Math.round(H * SCALE) + 'px';
+    ctx.setTransform(SCALE * devicePixelRatio, 0, 0, SCALE * devicePixelRatio, 0, 0);
+
+    rect(0, 0, W, H, SETTINGS.backgroundColour);
+
+    // Grid: a faint line every 100px, labelled every 400px
+    ctx.font = '14px IBM Plex Mono, monospace';
+    for (let x = 0; x <= W; x += 100) {
+        rect(x, 0, 1, H, '#ffffff', x % 400 === 0 ? 0.12 : 0.05);
+        if (x % 400 === 0) {
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.fillText(x, x + 4, 16);
+        }
+    }
+
+    // Single-jump reach above the ground
+    const reach = GT - (SETTINGS.jumpPower * SETTINGS.jumpPower) / (2 * SETTINGS.gravity);
+    rect(0, reach, W, 1, SETTINGS.windowColour, 0.25);
+    ctx.fillStyle = 'rgba(255,204,51,0.5)';
+    ctx.fillText('single jump height', 6, reach - 6);
+
+    level.gravestones.forEach(x => rect(x - 11, GT - 36, 22, 36, SETTINGS.gravestoneColour));
+
+    // House
+    const hx = level.houseX;
+    ctx.fillStyle = hex(SETTINGS.houseColour);
+    ctx.beginPath();
+    ctx.moveTo(hx - 150, GT - 200); ctx.lineTo(hx, GT - 300); ctx.lineTo(hx + 150, GT - 200);
+    ctx.fill();
+    rect(hx - 130, GT - 200, 260, 200, SETTINGS.houseColour);
+    rect(hx - 88, GT - 158, 36, 36, SETTINGS.windowColour);
+    rect(hx + 52, GT - 158, 36, 36, SETTINGS.windowColour);
+    rect(hx - 25, GT - 80, 50, 80, SETTINGS.doorColour);
+
+    level.ground.forEach(g => rect(g.from, GT, g.to - g.from, 32, SETTINGS.groundColour));
+    level.platforms.forEach(p => {
+        rect(p.x - p.width / 2, p.y - 8, p.width, 16, SETTINGS.platformColour);
+        // The candy the game adds on its own, shown faded
+        const count = Math.floor(p.width / 40);
+        for (let i = 0; i < count; i++) {
+            const cx = p.x - (count - 1) * 16 + i * 32;
+            rect(cx - 7, p.y - 37, 14, 14, SETTINGS.candyColour, 0.4);
+        }
+    });
+
+    level.candyRows.forEach(r => candyPositions(r).forEach(c => rect(c.x - 7, c.y - 7, 14, 14, SETTINGS.candyColour)));
+
+    const ps = SETTINGS.pumpkinSize;
+    level.pumpkins.forEach(p => {
+        const top = p.y || GT;
+        patrolLine(p.from, p.to, top - ps / 2, SETTINGS.pumpkinColour);
+        rect(p.from - ps / 2, top - ps, ps, ps, SETTINGS.pumpkinColour);
+    });
+
+    const bs = SETTINGS.batSize;
+    level.bats.forEach(b => {
+        rect(b.from, b.y - bs / 2, b.to - b.from, bs + SETTINGS.batSwoop, SETTINGS.batColour, 0.08);
+        patrolLine(b.from, b.to, b.y, SETTINGS.batColour);
+        rect(b.from - bs / 2, b.y - bs / 2, bs, bs, SETTINGS.batColour);
+    });
+
+    // Player start
+    const s = SETTINGS.playerSize;
+    rect(START_X - s / 2, GT - s, s, s, SETTINGS.playerColour);
+    rect(START_X - 6, GT - s / 2 - 8, 6, 8, SETTINGS.eyeColour);
+    rect(START_X + 4, GT - s / 2 - 8, 6, 8, SETTINGS.eyeColour);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fillText('START', START_X - 22, GT - s - 8);
+
+    if (drag) drawPreview();
+}
+
+function drawPreview() {
+    const d = previewItem();
+    if (!d) return;
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = '#ffcc33';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(d.x, d.y, d.w, d.h);
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+}
+
+// ----- Pointer input -----
+function worldPos(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / SCALE, y: (e.clientY - r.top) / SCALE };
+}
+
+cv.addEventListener('pointerdown', e => {
+    const p = worldPos(e);
+    if (tool === 'erase') { erase(p); return; }
+    if (tool === 'grave') { change(() => level.gravestones.push(snap(p.x))); return; }
+    if (tool === 'house') {
+        change(() => level.houseX = clamp(snap(p.x), 160, level.width - 160));
+        return;
+    }
+    cv.setPointerCapture(e.pointerId);
+    drag = { x0: snap(p.x), y0: snap(p.y), x1: snap(p.x), y1: snap(p.y) };
+    draw();
+});
+
+cv.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const p = worldPos(e);
+    drag.x1 = snap(clamp(p.x, 0, level.width));
+    drag.y1 = snap(p.y);
+    draw();
+});
+
+cv.addEventListener('pointerup', () => {
+    if (!drag) return;
+    const item = buildItem();
+    drag = null;
+    if (item) change(item);
+    else draw();
+});
+
+function span(defaultHalf) {
+    let a = Math.min(drag.x0, drag.x1);
+    let b = Math.max(drag.x0, drag.x1);
+    if (b - a < 20) { a = drag.x0 - defaultHalf; b = drag.x0 + defaultHalf; }
+    return [clamp(a, 0, level.width), clamp(b, 0, level.width)];
+}
+
+// The outline shown while dragging
+function previewItem() {
+    if (tool === 'platform') {
+        const [a, b] = span(60);
+        return { x: a, y: clamp(drag.y0, 60, GT - 40) - 8, w: b - a, h: 16 };
+    }
+    if (tool === 'ground') {
+        const [a, b] = span(100);
+        return { x: a, y: GT, w: b - a, h: 32 };
+    }
+    if (tool === 'candy') {
+        const [a, b] = span(0);
+        return { x: a - 7, y: drag.y0 - 7, w: Math.max(b - a, 0) + 14, h: 14 };
+    }
+    if (tool === 'pumpkin') {
+        const s = surfaceAt(drag.x0, drag.y0);
+        if (!s) return null;
+        const [a, b] = span(60);
+        return { x: Math.max(a, s.left), y: s.top - SETTINGS.pumpkinSize, w: Math.min(b, s.right) - Math.max(a, s.left), h: SETTINGS.pumpkinSize };
+    }
+    if (tool === 'bat') {
+        const [a, b] = span(150);
+        return { x: a, y: drag.y0 - 11, w: b - a, h: 22 + SETTINGS.batSwoop };
+    }
+    return null;
+}
+
+// Turns the finished drag into a change, or null if it makes no sense
+function buildItem() {
+    if (tool === 'platform') {
+        const [a, b] = span(60);
+        const width = Math.max(40, b - a);
+        const y = clamp(drag.y0, 60, GT - 40);
+        return () => level.platforms.push({ x: a + width / 2, y, width });
+    }
+    if (tool === 'ground') {
+        const [a, b] = span(100);
+        return () => addGround(a, b);
+    }
+    if (tool === 'candy') {
+        const [a, b] = span(0);
+        const count = Math.max(1, Math.round((b - a) / 32) + 1);
+        const row = { x: a, y: clamp(drag.y0, 20, GT - 20), count };
+        if ($('arc').checked && count > 2) row.arc = true;
+        return () => level.candyRows.push(row);
+    }
+    if (tool === 'pumpkin') {
+        const s = surfaceAt(drag.x0, drag.y0);
+        if (!s) { say('Pumpkins need ground or a platform under them.'); return null; }
+        const half = SETTINGS.pumpkinSize / 2;
+        let [a, b] = span(60);
+        a = Math.max(a, s.left + half);
+        b = Math.min(b, s.right - half);
+        if (b <= a) { a = b = (s.left + s.right) / 2; }
+        const p = { from: a, to: b };
+        if (!s.ground) p.y = s.top;
+        return () => level.pumpkins.push(p);
+    }
+    if (tool === 'bat') {
+        const [a, b] = span(150);
+        return () => level.bats.push({ from: a, to: b, y: clamp(drag.y0, 40, GT - 80) });
+    }
+    return null;
+}
+
+// New ground merges with any ground it touches
+function addGround(a, b) {
+    let from = a, to = b;
+    level.ground = level.ground.filter(g => {
+        if (g.to < from || g.from > to) return true;
+        from = Math.min(from, g.from);
+        to = Math.max(to, g.to);
+        return false;
+    });
+    level.ground.push({ from, to });
+    level.ground.sort((x, y) => x.from - y.from);
+}
+
+function erase(p) {
+    const hit = (x, y, w, h) => p.x >= x - 6 && p.x <= x + w + 6 && p.y >= y - 6 && p.y <= y + h + 6;
+    const ps = SETTINGS.pumpkinSize, bs = SETTINGS.batSize;
+    const checks = [
+        ['bats', b => hit(Math.min(b.from, b.to) - bs / 2, b.y - bs / 2, Math.abs(b.to - b.from) + bs, bs + SETTINGS.batSwoop)],
+        ['pumpkins', q => hit(q.from - ps / 2, (q.y || GT) - ps, q.to - q.from + ps, ps)],
+        ['candyRows', r => candyPositions(r).some(c => hit(c.x - 7, c.y - 7, 14, 14))],
+        ['gravestones', x => hit(x - 11, GT - 36, 22, 36)],
+        ['platforms', q => hit(q.x - q.width / 2, q.y - 8, q.width, 16)]
+    ];
+    for (const [key, test] of checks) {
+        const i = level[key].findIndex(test);
+        if (i !== -1) { change(() => level[key].splice(i, 1)); return; }
+    }
+    // Ground: erase only the bit you click, cutting a pit
+    const gi = level.ground.findIndex(g => hit(g.from, GT, g.to - g.from, 32));
+    if (gi !== -1) {
+        const x = snap(p.x);
+        change(() => {
+            const g = level.ground[gi];
+            const parts = [{ from: g.from, to: x - 60 }, { from: x + 60, to: g.to }].filter(s => s.to - s.from >= 40);
+            level.ground.splice(gi, 1, ...parts);
+        });
+    }
+}
+
+// ----- Checks -----
+function problems() {
+    const out = [];
+    const on = x => level.ground.some(g => x >= g.from && x <= g.to);
+    if (!on(START_X)) out.push('There is no ground under the start. The ghost falls straight into a pit.');
+    if (!on(level.houseX - 25) || !on(level.houseX + 25)) out.push('The haunted house door is over a pit. Put ground under it.');
+    const sorted = level.ground.slice().sort((a, b) => a.from - b.from);
+    for (let i = 1; i < sorted.length; i++) {
+        const gap = sorted[i].from - sorted[i - 1].to;
+        if (gap > 380) out.push('The pit at ' + sorted[i - 1].to + ' is ' + gap + 'px wide. That may be too far to jump.');
+    }
+    return out;
+}
+
+// ----- Output -----
+function levelCode() {
+    const row = o => '{ ' + Object.entries(o).map(([k, v]) => k + ': ' + v).join(', ') + ' }';
+    const list = (name, items, fmt) => '    ' + name + ': [\n' + items.map(i => '        ' + fmt(i)).join(',\n') + '\n    ]';
+    return 'const LEVEL = {\n' + [
+        '    width: ' + level.width,
+        list('ground', level.ground, row),
+        list('platforms', level.platforms, row),
+        list('candyRows', level.candyRows, row),
+        list('pumpkins', level.pumpkins, row),
+        list('bats', level.bats, row),
+        '    gravestones: [' + level.gravestones.join(', ') + ']',
+        '    houseX: ' + level.houseX
+    ].join(',\n') + '\n};';
+}
+
+function refresh() {
+    $('width').value = level.width;
+    $('widthOut').textContent = level.width + 'px';
+    $('warn').innerHTML = '';
+    problems().forEach(t => {
+        const li = document.createElement('li');
+        li.textContent = t;
+        $('warn').appendChild(li);
+    });
+    $('code').textContent = levelCode();
+    $('undo').disabled = history.length === 0;
+    draw();
+}
+
+let sayTimer;
+function say(text) {
+    $('status').textContent = text;
+    clearTimeout(sayTimer);
+    sayTimer = setTimeout(() => $('status').textContent = '', 6000);
+}
+
+// ----- Buttons -----
+$('undo').addEventListener('click', () => {
+    if (!history.length) return;
+    level = history.pop();
+    saveDraft();
+    refresh();
+});
+
+$('width').addEventListener('input', e => { $('widthOut').textContent = e.target.value + 'px'; });
+$('width').addEventListener('change', e => {
+    const w = Number(e.target.value);
+    change(() => {
+        level.width = w;
+        level.houseX = Math.min(level.houseX, w - 160);
+    });
+});
+
+$('reset').addEventListener('click', () => change(() => loadLevel(ORIGINAL)));
+
+$('clear').addEventListener('click', () => change(() => loadLevel({
+    width: level.width,
+    ground: [{ from: 0, to: level.width }],
+    houseX: level.width - 200
+})));
+
+$('copy').addEventListener('click', () => {
+    const text = levelCode();
+    navigator.clipboard.writeText(text).then(
+        () => say('Copied. Paste it to Claude and say "use this level".'),
+        () => {
+            $('code').closest('details').open = true;
+            const r = document.createRange();
+            r.selectNodeContents($('code'));
+            getSelection().removeAllRanges();
+            getSelection().addRange(r);
+            say('Copying was blocked here, so the code is selected below. Press Ctrl+C or Cmd+C.');
+        });
+});
+
+// ----- Play test -----
+function sceneOf() { return game.scene.scenes[0]; }
+
+function setGameKeys(on) {
+    try { game.input.keyboard.enabled = on; } catch (e) {}
+}
+
+$('playBtn').addEventListener('click', () => {
+    Object.keys(LEVEL).forEach(k => delete LEVEL[k]);
+    Object.assign(LEVEL, clone(level));
+    $('play').hidden = false;
+    setGameKeys(true);
+    game.resume();
+    sceneOf().scene.restart();
+    game.canvas.focus();
+});
+
+function stopPlay() {
+    $('play').hidden = true;
+    game.pause();
+    setGameKeys(false);
+}
+$('back').addEventListener('click', stopPlay);
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('play').hidden) stopPlay();
+});
+
+// ----- Save for Claude (needs the claude.ai page) -----
+let db = null;
+$('save').hidden = true;
+
+$('save').addEventListener('click', async () => {
+    try {
+        await db.doc('levels/current').set({ level: clone(level), savedAt: new Date().toISOString() });
+        say('Saved! Now tell Claude "use my level" and it goes into the game.');
+    } catch (e) {
+        say('Saving did not work (' + (e.code || 'error') + '). Use Copy level code instead.');
+    }
+});
+
+async function connect() {
+    if (!window.claude || !window.claude.use) return;
+    db = await window.claude.use('db');
+    if (!db) return;
+    $('save').hidden = false;
+    if (touched) return;
+    try {
+        const snap = await db.doc('levels/current').get();
+        if (snap.exists && !touched) {
+            loadLevel(snap.data().level);
+            refresh();
+            say('Loaded the level you last saved.');
+        }
+    } catch (e) {}
+}
+
+// ----- Start -----
+game.events.once('ready', () => { game.pause(); setGameKeys(false); });
+
+let draft = null;
+try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY)); } catch (e) {}
+loadLevel(draft || ORIGINAL);
+if (draft) touched = true;
+setTool('platform');
+refresh();
+connect();
+if (document.fonts) document.fonts.ready.then(draw);
+</script>
+<!-- PAGE END -->
+</body>
+</html>

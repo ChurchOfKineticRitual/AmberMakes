@@ -17,7 +17,6 @@ const SETTINGS = {
     // World
     gameWidth: 800,
     gameHeight: 600,
-    worldWidth: 3200,
     backgroundColour: '#140a1f',
     groundColour: 0x2b1d3a,
     platformColour: 0x4a3560,
@@ -51,8 +50,9 @@ const SETTINGS = {
 };
 
 // ===== LEVEL LAYOUT =====
-// Gaps between ground pieces are pits!
+// Build levels with level-editor.html. Gaps between ground pieces are pits!
 const LEVEL = {
+    width: 3200,
     ground: [
         { from: 0, to: 700 },
         { from: 800, to: 1400 },
@@ -102,6 +102,7 @@ const LEVEL = {
 // ===== GAME CONFIG =====
 const config = {
     type: Phaser.AUTO,
+    parent: 'game',
     width: SETTINGS.gameWidth,
     height: SETTINGS.gameHeight,
     backgroundColor: SETTINGS.backgroundColour,
@@ -153,13 +154,13 @@ function create() {
     facing = 1;
     invincibleUntil = 0;
 
-    this.physics.world.setBounds(0, 0, SETTINGS.worldWidth, SETTINGS.gameHeight, true, true, false, false);
+    this.physics.world.setBounds(0, 0, LEVEL.width, SETTINGS.gameHeight, true, true, false, false);
 
     // --- Night sky ---
     for (let i = 0; i < 70; i++) {
         const size = Phaser.Math.Between(1, 3);
         this.add.rectangle(
-            Phaser.Math.Between(0, 1300), Phaser.Math.Between(0, 380),
+            Phaser.Math.Between(0, SETTINGS.gameWidth + LEVEL.width * 0.2), Phaser.Math.Between(0, 380),
             size, size, 0xffffff
         ).setAlpha(Phaser.Math.FloatBetween(0.3, 0.9)).setScrollFactor(0.2);
     }
@@ -248,7 +249,7 @@ function create() {
     placeEyes();
 
     // --- Camera follows the ghost ---
-    this.cameras.main.setBounds(0, 0, SETTINGS.worldWidth, SETTINGS.gameHeight);
+    this.cameras.main.setBounds(0, 0, LEVEL.width, SETTINGS.gameHeight);
     this.cameras.main.startFollow(player, true, 0.1, 0.1);
 
     // --- HUD ---
